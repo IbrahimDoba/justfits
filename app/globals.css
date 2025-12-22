@@ -39,6 +39,10 @@
 }
 
 @theme inline {
+  /* Standard Colors */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
   /* Color System */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -48,16 +52,16 @@
   --color-accent-silver: var(--accent-silver);
 
   /* Gray Scale */
-  --color-gray-50: var(--brand-gray-50);
-  --color-gray-100: var(--brand-gray-100);
-  --color-gray-200: var(--brand-gray-200);
-  --color-gray-300: var(--brand-gray-300);
-  --color-gray-400: var(--brand-gray-400);
-  --color-gray-500: var(--brand-gray-500);
-  --color-gray-600: var(--brand-gray-600);
-  --color-gray-700: var(--brand-gray-700);
-  --color-gray-800: var(--brand-gray-800);
-  --color-gray-900: var(--brand-gray-900);
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
 
   /* Semantic Colors */
   --color-success: var(--success);
@@ -136,8 +140,10 @@
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 
   /* Transitions */
@@ -246,7 +252,6 @@ svg {
 
 /* Links */
 a {
-  color: inherit;
   text-decoration: none;
 }
 
