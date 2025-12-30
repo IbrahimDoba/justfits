@@ -2,6 +2,7 @@
 
 import { motion, HTMLMotionProps } from "framer-motion";
 import { staggerTextContainer, staggerTextItem } from "@/animations/variants";
+import { JSX } from "react";
 
 interface StaggerTextProps extends Omit<HTMLMotionProps<"div">, "variants"> {
   text: string;
