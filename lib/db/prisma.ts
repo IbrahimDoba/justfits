@@ -4,7 +4,7 @@
  * Prevents multiple instances in development hot-reload
  */
 
-import { PrismaClient } from "@/lib/generated/prisma";
+import { PrismaClient } from "@prisma/client";
 
 const prismaClientSingleton = () => {
   return new PrismaClient({
