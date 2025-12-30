@@ -1,11 +1,17 @@
+import { Hero } from '@/components/layout/Hero'
+import { Marquee } from '@/components/layout/Marquee'
+import { ProductShowcase } from '@/components/layout/ProductShowcase'
+import { WhyJustFits } from '@/components/layout/WhyJustFits'
+import { Footer } from '@/components/layout/Footer'
+
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gray-100">
-      <div className="pt-32 px-6">
-        {/* <h1 className="text-4xl font-display font-black text-center text-black">
-          Content will go here
-        </h1> */}
-      </div>
+    <main className="min-h-screen bg-white">
+      <Hero />
+      <Marquee />
+      <ProductShowcase />
+      <WhyJustFits />
+      <Footer />
     </main>
   )
 }

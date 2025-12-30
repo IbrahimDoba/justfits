@@ -74,6 +74,7 @@
   --font-heading: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-script: var(--font-playfair), Georgia, serif;
 
   /* Typography - Font Sizes */
   --font-size-displayLg: clamp(3rem, 8vw, 6rem);
@@ -161,6 +162,25 @@
   --z-modal: 1400;
   --z-popover: 1500;
   --z-tooltip: 1600;
+
+  /* Max Width Scale - Tailwind Defaults */
+  --max-width-xs: 20rem;
+  --max-width-sm: 24rem;
+  --max-width-md: 28rem;
+  --max-width-lg: 32rem;
+  --max-width-xl: 36rem;
+  --max-width-2xl: 42rem;
+  --max-width-3xl: 48rem;
+  --max-width-4xl: 56rem;
+  --max-width-5xl: 64rem;
+  --max-width-6xl: 72rem;
+  --max-width-7xl: 80rem;
+  --max-width-full: 100%;
+  --max-width-screen-sm: 640px;
+  --max-width-screen-md: 768px;
+  --max-width-screen-lg: 1024px;
+  --max-width-screen-xl: 1280px;
+  --max-width-screen-2xl: 1536px;
 }
 
 /* Light Mode Override */
@@ -176,8 +196,30 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Targeted resets for specific elements */
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+figure,
+blockquote,
+dl,
+dd {
   margin: 0;
+}
+
+ul,
+ol {
   padding: 0;
+  list-style: none;
 }
 
 html {
@@ -260,7 +302,6 @@ button {
   font-family: inherit;
   cursor: pointer;
   border: none;
-  background: none;
 }
 
 /* Forms */
@@ -293,6 +334,11 @@ select {
     padding-left: 2rem;
     padding-right: 2rem;
   }
+}
+
+/* Custom Font Utility Classes */
+.font-script {
+  font-family: var(--font-script);
 }
 
 /* Animation Classes */
