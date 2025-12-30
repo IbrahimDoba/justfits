@@ -2,27 +2,29 @@
  * Prisma Client Instance
  * Optimized for Next.js development and production
  * Prevents multiple instances in development hot-reload
+ *
+ * TODO: Uncomment when database is set up
  */
 
-import { PrismaClient } from "@prisma/client";
+// import { PrismaClient } from "@prisma/client";
 
-const prismaClientSingleton = () => {
-  return new PrismaClient({
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
-  });
-};
+// const prismaClientSingleton = () => {
+//   return new PrismaClient({
+//     log:
+//       process.env.NODE_ENV === "development"
+//         ? ["query", "error", "warn"]
+//         : ["error"],
+//   });
+// };
 
-type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
+// type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClientSingleton | undefined;
-};
+// const globalForPrisma = globalThis as unknown as {
+//   prisma: PrismaClientSingleton | undefined;
+// };
 
-const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
+// const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 
-export default prisma;
+// export default prisma;
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
