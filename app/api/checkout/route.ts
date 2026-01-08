@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db/prisma";
 
+interface CartItem {
+  productSlug: string;
+  productName: string;
+  size: string;
+  price: number;
+  quantity: number;
+}
+
+interface ProductVariant {
+  id: string;
+  size: string | null;
+}
+
 function generateOrderNumber() {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -67,7 +80,7 @@ export async function POST(request: Request) {
 
     // Find or create variants for each cart item
     const orderItems = [];
-    for (const item of items) {
+    for (const item of items as CartItem[]) {
       // Try to find the variant by product slug and size
       const product = await prisma.product.findUnique({
         where: { slug: item.productSlug },
@@ -78,7 +91,7 @@ export async function POST(request: Request) {
 
       if (product) {
         // Find variant by size
-        const variant = product.variants.find(v => v.size === item.size);
+        const variant = product.variants.find((v: ProductVariant) => v.size === item.size);
         if (variant) {
           variantId = variant.id;
         } else if (product.variants.length > 0) {
