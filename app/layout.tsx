@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, Bebas_Neue, JetBrains_Mono, Playfair_Display } from "next/font/google";
-import { Navbar } from "@/components/layout/Navbar";
+import { SessionProvider } from "@/components/providers/SessionProvider";
+import { CartProvider } from "@/context/CartContext";
+import { WishlistProvider } from "@/context/WishlistContext";
+import { ToastProvider } from "@/components/ui/Toast";
+import { CartDrawer } from "@/components/layout/CartDrawer";
 import "./globals.css";
 
 // Font Configurations for JUSTFITS Premium Brand
@@ -73,8 +77,16 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable}`}>
       <body className="antialiased">
-        <Navbar />
-        {children}
+        <SessionProvider>
+          <ToastProvider>
+            <WishlistProvider>
+              <CartProvider>
+                {children}
+                <CartDrawer />
+              </CartProvider>
+            </WishlistProvider>
+          </ToastProvider>
+        </SessionProvider>
       </body>
     </html>
   );
