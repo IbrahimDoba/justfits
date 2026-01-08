@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/Input'
 import { useToast } from '@/components/ui/Toast'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/'
@@ -71,10 +71,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <Navbar />
-
-      <section className="pt-32 pb-20">
+    <section className="pt-32 pb-20">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -221,7 +218,39 @@ export default function LoginPage() {
           </motion.div>
         </div>
       </section>
+  )
+}
 
+function LoginLoading() {
+  return (
+    <section className="pt-32 pb-20">
+      <div className="container mx-auto px-6">
+        <div className="max-w-md mx-auto">
+          <div className="text-center mb-8">
+            <div className="h-10 bg-gray-200 rounded w-48 mx-auto mb-3 animate-pulse" />
+            <div className="h-4 bg-gray-200 rounded w-64 mx-auto animate-pulse" />
+          </div>
+          <div className="bg-white rounded-2xl p-8 shadow-sm">
+            <div className="h-12 bg-gray-200 rounded-xl mb-6 animate-pulse" />
+            <div className="space-y-4">
+              <div className="h-12 bg-gray-200 rounded-xl animate-pulse" />
+              <div className="h-12 bg-gray-200 rounded-xl animate-pulse" />
+              <div className="h-12 bg-gray-200 rounded-xl animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <main className="min-h-screen bg-gray-50">
+      <Navbar />
+      <Suspense fallback={<LoginLoading />}>
+        <LoginForm />
+      </Suspense>
       <Footer />
     </main>
   )
