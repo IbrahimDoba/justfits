@@ -39,24 +39,30 @@ export async function generateModelShot({
   // Build the prompt for model shot generation
   const viewDescriptions: Record<string, string> = {
     "Front View": "facing the camera directly with a confident expression",
-    "Left Profile": "turned to show left profile, looking slightly toward camera",
-    "Right Profile": "turned to show right profile, looking slightly toward camera",
+    "Left Profile":
+      "turned to show left profile, looking slightly toward camera",
+    "Right Profile":
+      "turned to show right profile, looking slightly toward camera",
     "3/4 View": "posed at a flattering three-quarter angle",
-    "Lifestyle": "in a natural relaxed pose, candid lifestyle setting",
+    Lifestyle: "in a natural relaxed pose, candid lifestyle setting",
     "Action Shot": "in dynamic motion, active lifestyle pose",
   };
 
   const backgroundDescriptions: Record<string, string> = {
-    "Studio White": "clean white studio background with professional soft lighting",
-    "Studio Gray": "professional gray gradient background with dramatic lighting",
+    "Studio White":
+      "clean white studio background with professional soft lighting",
+    "Studio Gray":
+      "professional gray gradient background with dramatic lighting",
     "Urban Street": "stylish urban street setting with blurred city background",
-    "Minimal": "minimalist solid neutral background",
+    Minimal: "minimalist solid neutral background",
   };
 
   const prompt = `Professional e-commerce product photography. Generate a photorealistic image of a stylish ${skinColor.toLowerCase()} skin tone ${gender.toLowerCase()} model wearing the cap/hat shown in the reference image.
 
 The model should be ${viewDescriptions[view] || viewDescriptions["Front View"]}.
-Background: ${backgroundDescriptions[background] || backgroundDescriptions["Studio White"]}.
+Background: ${
+    backgroundDescriptions[background] || backgroundDescriptions["Studio White"]
+  }.
 ${additionalDetails ? `Additional styling: ${additionalDetails}` : ""}
 
 IMPORTANT: The cap MUST look exactly like the reference product image - same colors, logos, style, and details. The cap should be the main focus of the image. High fashion e-commerce quality.`;
@@ -68,11 +74,10 @@ IMPORTANT: The cap MUST look exactly like the reference product image - same col
       image: await toFile(imageBuffer, "product.png", { type: "image/png" }),
       prompt,
       size: "1024x1024",
-      // @ts-expect-error - input_fidelity is a new parameter not in types yet
       input_fidelity: "high",
     });
 
-    const imageBase64 = result.data[0]?.b64_json;
+    const imageBase64 = result.data?.[0]?.b64_json;
     if (!imageBase64) {
       throw new Error("No image generated");
     }
@@ -84,7 +89,9 @@ IMPORTANT: The cap MUST look exactly like the reference product image - same col
 
     if (error instanceof OpenAI.APIError) {
       if (error.status === 400) {
-        throw new Error("Invalid request. Please try a different image or prompt.");
+        throw new Error(
+          "Invalid request. Please try a different image or prompt."
+        );
       }
       if (error.status === 429) {
         throw new Error("Rate limit exceeded. Please try again in a moment.");
@@ -161,7 +168,7 @@ export async function generateProductImage(prompt: string): Promise<string> {
       response_format: "url",
     });
 
-    const imageUrl = response.data[0]?.url;
+    const imageUrl = response.data?.[0]?.url;
     if (!imageUrl) {
       throw new Error("No image generated");
     }

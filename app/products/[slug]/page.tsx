@@ -145,6 +145,19 @@ export default function ProductDetailPage() {
     return null;
   }
 
+  // Calculate max stock for selected variant
+  const selectedVariant = selectedSize
+    ? product.variants.find((v) => v.size === selectedSize)
+    : product.variants[0];
+  const maxStock = selectedVariant?.stockQuantity || 0;
+
+  // Reset quantity if it exceeds new max stock when size changes
+  useEffect(() => {
+    if (quantity > maxStock && maxStock > 0) {
+      setQuantity(maxStock);
+    }
+  }, [maxStock, quantity]);
+
   const handleAddToCart = () => {
     // If only one size, auto-select it
     const sizeToUse =
@@ -156,9 +169,15 @@ export default function ProductDetailPage() {
     }
 
     // Find the variant for the selected size
-    const selectedVariant = product.variants.find((v) => v.size === sizeToUse);
-    if (!selectedVariant) {
-      showToast("Selected size is not available", "error");
+    const variant = product.variants.find((v) => v.size === sizeToUse);
+    if (!variant || variant.stockQuantity < 1) {
+      showToast("Selected size is out of stock", "error");
+      return;
+    }
+
+    if (quantity > variant.stockQuantity) {
+      showToast(`Only ${variant.stockQuantity} items available`, "error");
+      setQuantity(variant.stockQuantity);
       return;
     }
 
@@ -170,8 +189,8 @@ export default function ProductDetailPage() {
       slug: product.slug,
       name: product.name,
       description: product.description,
-      price: selectedVariant.price,
-      compareAtPrice: selectedVariant.compareAtPrice || undefined,
+      price: variant.price,
+      compareAtPrice: variant.compareAtPrice || undefined,
       images: product.images,
       category: product.category,
       tags: [],
@@ -182,7 +201,8 @@ export default function ProductDetailPage() {
     };
 
     setTimeout(() => {
-      addItem(cartProduct, quantity, sizeToUse);
+      // Pass stockQuantity as maxStock
+      addItem(cartProduct, quantity, sizeToUse, variant.stockQuantity);
       setIsAdding(false);
       setJustAdded(true);
       showToast(`${product.name} added to cart`, "success");
@@ -216,6 +236,8 @@ export default function ProductDetailPage() {
       showToast(`${product.name} added to wishlist`, "success");
     }
   };
+
+  const isOutOfStock = maxStock === 0;
 
   return (
     <main className="min-h-screen bg-white">
@@ -378,21 +400,35 @@ export default function ProductDetailPage() {
 
               {/* Quantity Selector */}
               <div className="mb-8">
-                <span className="text-sm font-medium text-black block mb-3">
-                  Quantity
-                </span>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-black block">
+                    Quantity
+                  </span>
+                  {maxStock > 0 && maxStock < 5 && (
+                    <span className="text-xs font-medium text-red-600 animate-pulse">
+                      Only {maxStock} left in stock!
+                    </span>
+                  )}
+                </div>
+
                 <div className="inline-flex items-center bg-gray-100 rounded-full">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-3 hover:bg-gray-200 rounded-full transition-colors text-black"
+                    disabled={quantity <= 1 || isOutOfStock}
+                    className="p-3 hover:bg-gray-200 rounded-full transition-colors text-black disabled:text-gray-400"
                     aria-label="Decrease quantity"
                   >
                     <Minus size={18} />
                   </button>
-                  <span className="px-6 font-medium text-black">{quantity}</span>
+                  <span className="px-6 font-medium text-black">
+                    {isOutOfStock ? 0 : quantity}
+                  </span>
                   <button
-                    onClick={() => setQuantity(quantity + 1)}
-                    className="p-3 hover:bg-gray-200 rounded-full transition-colors text-black"
+                    onClick={() =>
+                      setQuantity(Math.min(maxStock, quantity + 1))
+                    }
+                    disabled={quantity >= maxStock || isOutOfStock}
+                    className="p-3 hover:bg-gray-200 rounded-full transition-colors text-black disabled:text-gray-400"
                     aria-label="Increase quantity"
                   >
                     <Plus size={18} />
@@ -403,14 +439,14 @@ export default function ProductDetailPage() {
               {/* Actions */}
               <div className="flex gap-4 mb-8">
                 <motion.button
-                  whileHover={product.inStock && !isAdding ? { scale: 1.02 } : {}}
-                  whileTap={product.inStock && !isAdding ? { scale: 0.98 } : {}}
+                  whileHover={!isOutOfStock && !isAdding ? { scale: 1.02 } : {}}
+                  whileTap={!isOutOfStock && !isAdding ? { scale: 0.98 } : {}}
                   onClick={handleAddToCart}
-                  disabled={!product.inStock || isAdding}
+                  disabled={isOutOfStock || isAdding}
                   className={`
                     flex-1 flex items-center justify-center gap-3 py-4 px-8 rounded-full font-medium text-base transition-all
                     ${
-                      !product.inStock
+                      isOutOfStock
                         ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                         : justAdded
                         ? "bg-green-600 text-white"
@@ -436,7 +472,7 @@ export default function ProductDetailPage() {
                       <Check size={20} />
                       Added to Cart
                     </>
-                  ) : !product.inStock ? (
+                  ) : isOutOfStock ? (
                     "Out of Stock"
                   ) : (
                     <>
