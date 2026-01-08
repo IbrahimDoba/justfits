@@ -27,13 +27,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!productName) {
-      return NextResponse.json(
-        { error: "Product name is required" },
-        { status: 400 }
-      );
-    }
-
     console.log("Generating model shot with:", {
       productName,
       view,
@@ -46,7 +39,7 @@ export async function POST(request: NextRequest) {
     // Generate model shot using the product image as reference
     const imageUrl = await generateModelShot({
       productImageUrl: sourceImageUrl,
-      productName,
+      productName: productName || "cap/hat",
       gender: gender || "Female",
       skinColor: skinColor || "Medium",
       view: view || "Front View",
