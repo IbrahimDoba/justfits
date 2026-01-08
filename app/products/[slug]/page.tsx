@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, notFound } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ProductImagePlaceholder } from "@/components/ui/ProductImagePlaceholder";
 import { ProductCard } from "@/components/ui/ProductCard";
-import { getProductBySlug, products, formatPrice } from "@/lib/data/products";
 import {
   ArrowLeft,
   Minus,
@@ -19,21 +19,74 @@ import {
   Shield,
   RotateCcw,
   Check,
+  Loader2,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useToast } from "@/components/ui/Toast";
 
+interface ProductVariant {
+  id: string;
+  sku: string;
+  name: string;
+  size: string;
+  color: string;
+  price: number;
+  compareAtPrice: number | null;
+  stockQuantity: number;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  price: number;
+  compareAtPrice: number | null;
+  images: string[];
+  category: string;
+  categorySlug: string;
+  sizes: string[];
+  inStock: boolean;
+  featured: boolean;
+  variants: ProductVariant[];
+  avgRating: number;
+  reviewCount: number;
+}
+
+interface RelatedProduct {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  image: string | null;
+  category: string;
+  inStock: boolean;
+}
+
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 0,
+  }).format(price);
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const product = getProductBySlug(slug);
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFoundState, setNotFoundState] = useState(false);
 
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+
   const { addItem } = useCart();
   const {
     addItem: addToWishlist,
@@ -41,16 +94,56 @@ export default function ProductDetailPage() {
     isInWishlist,
   } = useWishlist();
   const { showToast } = useToast();
+
+  // Fetch product data
+  useEffect(() => {
+    async function fetchProduct() {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/products/${slug}`);
+        if (!res.ok) {
+          if (res.status === 404) {
+            setNotFoundState(true);
+            return;
+          }
+          throw new Error("Failed to fetch product");
+        }
+        const data = await res.json();
+        setProduct(data.product);
+        setRelatedProducts(data.relatedProducts || []);
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        setNotFoundState(true);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    if (slug) {
+      fetchProduct();
+    }
+  }, [slug]);
+
   const isWishlisted = product ? isInWishlist(product.id) : false;
 
-  if (!product) {
+  if (notFoundState) {
     notFound();
   }
 
-  // Get related products (same category, excluding current)
-  const relatedProducts = products
-    .filter((p) => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-white">
+        <Navbar />
+        <div className="pt-32 flex justify-center items-center min-h-[60vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+        </div>
+        <Footer />
+      </main>
+    );
+  }
+
+  if (!product) {
+    return null;
+  }
 
   const handleAddToCart = () => {
     // If only one size, auto-select it
@@ -62,26 +155,64 @@ export default function ProductDetailPage() {
       return;
     }
 
+    // Find the variant for the selected size
+    const selectedVariant = product.variants.find((v) => v.size === sizeToUse);
+    if (!selectedVariant) {
+      showToast("Selected size is not available", "error");
+      return;
+    }
+
     setIsAdding(true);
 
-    // Simulate a brief delay for UX feedback
+    // Create product object compatible with cart
+    const cartProduct = {
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      description: product.description,
+      price: selectedVariant.price,
+      compareAtPrice: selectedVariant.compareAtPrice || undefined,
+      images: product.images,
+      category: product.category,
+      tags: [],
+      sizes: product.sizes,
+      inStock: product.inStock,
+      featured: product.featured,
+      variant: 1 as const,
+    };
+
     setTimeout(() => {
-      addItem(product, quantity, sizeToUse);
+      addItem(cartProduct, quantity, sizeToUse);
       setIsAdding(false);
       setJustAdded(true);
       showToast(`${product.name} added to cart`, "success");
 
-      // Reset the "just added" state after 2 seconds
       setTimeout(() => setJustAdded(false), 2000);
     }, 300);
   };
 
   const handleToggleWishlist = () => {
+    const wishlistProduct = {
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      compareAtPrice: product.compareAtPrice || undefined,
+      images: product.images,
+      category: product.category,
+      tags: [],
+      sizes: product.sizes,
+      inStock: product.inStock,
+      featured: product.featured,
+      variant: 1 as const,
+    };
+
     if (isWishlisted) {
       removeFromWishlist(product.id);
       showToast(`${product.name} removed from wishlist`, "info");
     } else {
-      addToWishlist(product);
+      addToWishlist(wishlistProduct);
       showToast(`${product.name} added to wishlist`, "success");
     }
   };
@@ -122,25 +253,44 @@ export default function ProductDetailPage() {
                   transition={{ duration: 0.3 }}
                   className="aspect-[4/5] rounded-3xl overflow-hidden bg-white shadow-lg mb-4"
                 >
-                  <ProductImagePlaceholder variant={product.variant} />
+                  {product.images.length > 0 ? (
+                    <Image
+                      src={product.images[selectedImage] || product.images[0]}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover"
+                      priority
+                    />
+                  ) : (
+                    <ProductImagePlaceholder variant={1} />
+                  )}
                 </motion.div>
 
                 {/* Thumbnail Gallery */}
-                <div className="grid grid-cols-4 gap-3">
-                  {[0, 1, 2, 3].map((index) => (
-                    <button
-                      key={index}
-                      onClick={() => setSelectedImage(index)}
-                      className={`aspect-square rounded-xl overflow-hidden bg-white shadow transition-all duration-200 ${
-                        selectedImage === index
-                          ? "ring-2 ring-black opacity-100"
-                          : "opacity-50 hover:opacity-80"
-                      }`}
-                    >
-                      <ProductImagePlaceholder variant={product.variant} />
-                    </button>
-                  ))}
-                </div>
+                {product.images.length > 1 && (
+                  <div className="grid grid-cols-4 gap-3">
+                    {product.images.slice(0, 4).map((image, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setSelectedImage(index)}
+                        className={`aspect-square rounded-xl overflow-hidden bg-white shadow transition-all duration-200 relative ${
+                          selectedImage === index
+                            ? "ring-2 ring-black opacity-100"
+                            : "opacity-50 hover:opacity-80"
+                        }`}
+                      >
+                        <Image
+                          src={image}
+                          alt={`${product.name} ${index + 1}`}
+                          fill
+                          sizes="100px"
+                          className="object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
 
@@ -196,22 +346,32 @@ export default function ProductDetailPage() {
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    {product.sizes.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => setSelectedSize(size)}
-                        className={`
-                          px-6 py-3 rounded-full text-sm font-medium transition-all duration-200
-                          ${
-                            selectedSize === size
-                              ? "bg-black text-white"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }
-                        `}
-                      >
-                        {size}
-                      </button>
-                    ))}
+                    {product.sizes.map((size) => {
+                      const variant = product.variants.find(
+                        (v) => v.size === size
+                      );
+                      const isAvailable = variant && variant.stockQuantity > 0;
+
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => setSelectedSize(size)}
+                          disabled={!isAvailable}
+                          className={`
+                            px-6 py-3 rounded-full text-sm font-medium transition-all duration-200
+                            ${
+                              selectedSize === size
+                                ? "bg-black text-white"
+                                : isAvailable
+                                ? "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                : "bg-gray-100 text-gray-300 cursor-not-allowed line-through"
+                            }
+                          `}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -229,9 +389,7 @@ export default function ProductDetailPage() {
                   >
                     <Minus size={18} />
                   </button>
-                  <span className="px-6 font-medium text-black">
-                    {quantity}
-                  </span>
+                  <span className="px-6 font-medium text-black">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
                     className="p-3 hover:bg-gray-200 rounded-full transition-colors text-black"
@@ -245,9 +403,7 @@ export default function ProductDetailPage() {
               {/* Actions */}
               <div className="flex gap-4 mb-8">
                 <motion.button
-                  whileHover={
-                    product.inStock && !isAdding ? { scale: 1.02 } : {}
-                  }
+                  whileHover={product.inStock && !isAdding ? { scale: 1.02 } : {}}
                   whileTap={product.inStock && !isAdding ? { scale: 0.98 } : {}}
                   onClick={handleAddToCart}
                   disabled={!product.inStock || isAdding}
@@ -328,23 +484,6 @@ export default function ProductDetailPage() {
                   <span>30-day easy returns</span>
                 </div>
               </div>
-
-              {/* Tags */}
-              <div className="mt-8 pt-8 border-t border-gray-200">
-                <span className="text-sm font-medium text-black block mb-3">
-                  Tags
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {product.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
             </motion.div>
           </div>
         </div>
@@ -364,7 +503,7 @@ export default function ProductDetailPage() {
                   title={relatedProduct.name}
                   price={formatPrice(relatedProduct.price)}
                   slug={relatedProduct.slug}
-                  variant={relatedProduct.variant}
+                  image={relatedProduct.image}
                   inStock={relatedProduct.inStock}
                   layout="grid"
                 />

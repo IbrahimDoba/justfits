@@ -1,17 +1,17 @@
-'use client'
+"use client";
 
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react'
-import Link from 'next/link'
-import { useCart } from '@/context/CartContext'
-import { formatPrice } from '@/lib/data/products'
-import { ProductImagePlaceholder } from '@/components/ui/ProductImagePlaceholder'
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useCart } from "@/context/CartContext";
+import { formatPrice } from "@/lib/types/product";
+import { ProductImagePlaceholder } from "@/components/ui/ProductImagePlaceholder";
 
 const drawerVariants = {
   closed: {
-    x: '100%',
+    x: "100%",
     transition: {
-      type: 'spring' as const,
+      type: "spring" as const,
       stiffness: 400,
       damping: 40,
     },
@@ -19,17 +19,17 @@ const drawerVariants = {
   open: {
     x: 0,
     transition: {
-      type: 'spring' as const,
+      type: "spring" as const,
       stiffness: 400,
       damping: 40,
     },
   },
-}
+};
 
 const backdropVariants = {
   closed: { opacity: 0 },
   open: { opacity: 1 },
-}
+};
 
 const itemVariants = {
   hidden: { opacity: 0, x: 20 },
@@ -39,7 +39,7 @@ const itemVariants = {
     transition: { delay: i * 0.1 },
   }),
   exit: { opacity: 0, x: -20 },
-}
+};
 
 export function CartDrawer() {
   const {
@@ -50,7 +50,7 @@ export function CartDrawer() {
     updateQuantity,
     totalItems,
     totalPrice,
-  } = useCart()
+  } = useCart();
 
   return (
     <AnimatePresence>
@@ -78,7 +78,9 @@ export function CartDrawer() {
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200">
               <div className="flex items-center gap-3">
                 <ShoppingBag size={22} className="text-black" />
-                <h2 className="font-display text-xl text-black tracking-wide">YOUR CART</h2>
+                <h2 className="font-display text-xl text-black tracking-wide">
+                  YOUR CART
+                </h2>
                 {totalItems > 0 && (
                   <span className="bg-black text-white text-[10px] font-semibold px-2.5 py-1 rounded-full">
                     {totalItems}
@@ -101,7 +103,9 @@ export function CartDrawer() {
                   <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
                     <ShoppingBag size={32} className="text-gray-400" />
                   </div>
-                  <p className="text-gray-900 font-medium text-lg mb-2">Your cart is empty</p>
+                  <p className="text-gray-900 font-medium text-lg mb-2">
+                    Your cart is empty
+                  </p>
                   <p className="text-gray-500 text-sm mb-8 max-w-[240px]">
                     Add some premium caps to get started
                   </p>
@@ -131,9 +135,19 @@ export function CartDrawer() {
                         <Link
                           href={`/products/${item.product.slug}`}
                           onClick={closeCart}
-                          className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-white"
+                          className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-white"
                         >
-                          <ProductImagePlaceholder variant={item.product.variant} />
+                          {item.product.images && item.product.images[0] ? (
+                            <img
+                              src={item.product.images[0]}
+                              alt={item.product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <ProductImagePlaceholder
+                              variant={item.product.variant}
+                            />
+                          )}
                         </Link>
 
                         {/* Product Info */}
@@ -189,7 +203,9 @@ export function CartDrawer() {
                             </div>
 
                             <button
-                              onClick={() => removeItem(item.product.id, item.size)}
+                              onClick={() =>
+                                removeItem(item.product.id, item.size)
+                              }
                               className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                               aria-label="Remove item"
                             >
@@ -242,5 +258,5 @@ export function CartDrawer() {
         </>
       )}
     </AnimatePresence>
-  )
+  );
 }

@@ -1,126 +1,130 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Navbar } from '@/components/layout/Navbar'
-import { Footer } from '@/components/layout/Footer'
-import { Input, Select } from '@/components/ui/Input'
-import { ProductImagePlaceholder } from '@/components/ui/ProductImagePlaceholder'
-import { useCart } from '@/context/CartContext'
-import { useToast } from '@/components/ui/Toast'
-import { formatPrice } from '@/lib/data/products'
-import { ArrowLeft, Lock, Truck, CreditCard, ShieldCheck } from 'lucide-react'
+import { useState } from "react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { Input, Select } from "@/components/ui/Input";
+import { ProductImagePlaceholder } from "@/components/ui/ProductImagePlaceholder";
+import { useCart } from "@/context/CartContext";
+import { useToast } from "@/components/ui/Toast";
+import { formatPrice } from "@/lib/utils/format";
+import { ArrowLeft, Lock, Truck, CreditCard, ShieldCheck } from "lucide-react";
 
 const nigerianStates = [
-  { value: '', label: 'Select State' },
-  { value: 'lagos', label: 'Lagos' },
-  { value: 'abuja', label: 'Abuja (FCT)' },
-  { value: 'rivers', label: 'Rivers' },
-  { value: 'kano', label: 'Kano' },
-  { value: 'oyo', label: 'Oyo' },
-  { value: 'kaduna', label: 'Kaduna' },
-  { value: 'ogun', label: 'Ogun' },
-  { value: 'enugu', label: 'Enugu' },
-  { value: 'delta', label: 'Delta' },
-  { value: 'anambra', label: 'Anambra' },
-  { value: 'edo', label: 'Edo' },
-  { value: 'imo', label: 'Imo' },
-  { value: 'kwara', label: 'Kwara' },
-  { value: 'osun', label: 'Osun' },
-  { value: 'ondo', label: 'Ondo' },
-  { value: 'akwa-ibom', label: 'Akwa Ibom' },
-  { value: 'cross-river', label: 'Cross River' },
-  { value: 'abia', label: 'Abia' },
-  { value: 'ekiti', label: 'Ekiti' },
-  { value: 'other', label: 'Other' },
-]
+  { value: "", label: "Select State" },
+  { value: "lagos", label: "Lagos" },
+  { value: "abuja", label: "Abuja (FCT)" },
+  { value: "rivers", label: "Rivers" },
+  { value: "kano", label: "Kano" },
+  { value: "oyo", label: "Oyo" },
+  { value: "kaduna", label: "Kaduna" },
+  { value: "ogun", label: "Ogun" },
+  { value: "enugu", label: "Enugu" },
+  { value: "delta", label: "Delta" },
+  { value: "anambra", label: "Anambra" },
+  { value: "edo", label: "Edo" },
+  { value: "imo", label: "Imo" },
+  { value: "kwara", label: "Kwara" },
+  { value: "osun", label: "Osun" },
+  { value: "ondo", label: "Ondo" },
+  { value: "akwa-ibom", label: "Akwa Ibom" },
+  { value: "cross-river", label: "Cross River" },
+  { value: "abia", label: "Abia" },
+  { value: "ekiti", label: "Ekiti" },
+  { value: "other", label: "Other" },
+];
 
 interface FormData {
-  email: string
-  firstName: string
-  lastName: string
-  phone: string
-  address: string
-  city: string
-  state: string
-  postalCode: string
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
 }
 
 interface FormErrors {
-  [key: string]: string
+  [key: string]: string;
 }
 
 export default function CheckoutPage() {
-  const router = useRouter()
-  const { items, totalItems, totalPrice, clearCart } = useCart()
-  const { showToast } = useToast()
-  const [isProcessing, setIsProcessing] = useState(false)
+  const router = useRouter();
+  const { items, totalItems, totalPrice, clearCart } = useCart();
+  const { showToast } = useToast();
+  const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState<FormData>({
-    email: '',
-    firstName: '',
-    lastName: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    postalCode: '',
-  })
-  const [errors, setErrors] = useState<FormErrors>({})
+    email: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    postalCode: "",
+  });
+  const [errors, setErrors] = useState<FormErrors>({});
 
-  const shippingCost = totalPrice >= 50000 ? 0 : 3500
-  const orderTotal = totalPrice + shippingCost
+  const shippingCost = totalPrice >= 50000 ? 0 : 3500;
+  const orderTotal = totalPrice + shippingCost;
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }))
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
-  }
+  };
 
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {}
+    const newErrors: FormErrors = {};
 
     if (!formData.email) {
-      newErrors.email = 'Email is required'
+      newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email'
+      newErrors.email = "Please enter a valid email";
     }
 
-    if (!formData.firstName) newErrors.firstName = 'First name is required'
-    if (!formData.lastName) newErrors.lastName = 'Last name is required'
+    if (!formData.firstName) newErrors.firstName = "First name is required";
+    if (!formData.lastName) newErrors.lastName = "Last name is required";
 
     if (!formData.phone) {
-      newErrors.phone = 'Phone number is required'
-    } else if (!/^(\+234|0)[0-9]{10}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Please enter a valid Nigerian phone number'
+      newErrors.phone = "Phone number is required";
+    } else if (
+      !/^(\+234|0)[0-9]{10}$/.test(formData.phone.replace(/\s/g, ""))
+    ) {
+      newErrors.phone = "Please enter a valid Nigerian phone number";
     }
 
-    if (!formData.address) newErrors.address = 'Address is required'
-    if (!formData.city) newErrors.city = 'City is required'
-    if (!formData.state) newErrors.state = 'State is required'
+    if (!formData.address) newErrors.address = "Address is required";
+    if (!formData.city) newErrors.city = "City is required";
+    if (!formData.state) newErrors.state = "State is required";
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!validateForm()) {
-      showToast('Please fill in all required fields', 'error')
-      return
+      showToast("Please fill in all required fields", "error");
+      return;
     }
 
     if (items.length === 0) {
-      showToast('Your cart is empty', 'error')
-      return
+      showToast("Your cart is empty", "error");
+      return;
     }
 
-    setIsProcessing(true)
+    setIsProcessing(true);
 
     try {
       // Prepare order data
@@ -133,7 +137,7 @@ export default function CheckoutPage() {
         city: formData.city,
         state: formData.state,
         postalCode: formData.postalCode,
-        items: items.map(item => ({
+        items: items.map((item) => ({
           productSlug: item.product.slug,
           productName: item.product.name,
           size: item.size,
@@ -143,44 +147,53 @@ export default function CheckoutPage() {
         subtotal: totalPrice,
         shippingCost: shippingCost,
         total: orderTotal,
-      }
+      };
 
       // Send order to API
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to place order')
+        throw new Error(data.error || "Failed to place order");
       }
 
       // Clear cart and show success
-      clearCart()
-      showToast('Order placed successfully!', 'success')
+      clearCart();
+      showToast("Order placed successfully!", "success");
 
       // Redirect to success page with order number
-      router.push(`/checkout/success?order=${data.order.orderNumber}`)
+      router.push(`/checkout/success?order=${data.order.orderNumber}`);
     } catch (error) {
-      console.error('Checkout error:', error)
-      showToast(error instanceof Error ? error.message : 'Payment failed. Please try again.', 'error')
+      console.error("Checkout error:", error);
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Payment failed. Please try again.",
+        "error"
+      );
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   // Redirect if cart is empty
-  if (items.length === 0 && typeof window !== 'undefined') {
+  if (items.length === 0 && typeof window !== "undefined") {
     return (
       <main className="min-h-screen bg-gray-50">
         <Navbar />
         <div className="pt-32 pb-20">
           <div className="container mx-auto px-6 text-center">
-            <h1 className="font-display text-4xl text-black mb-4">Your cart is empty</h1>
-            <p className="text-gray-600 mb-8">Add some items to your cart to checkout</p>
+            <h1 className="font-display text-4xl text-black mb-4">
+              Your cart is empty
+            </h1>
+            <p className="text-gray-600 mb-8">
+              Add some items to your cart to checkout
+            </p>
             <Link
               href="/shop"
               className="inline-block bg-black text-white px-8 py-4 rounded-full font-medium hover:bg-gray-800 transition-colors"
@@ -191,7 +204,7 @@ export default function CheckoutPage() {
         </div>
         <Footer />
       </main>
-    )
+    );
   }
 
   return (
@@ -342,7 +355,9 @@ export default function CheckoutPage() {
                       <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl mb-4">
                         <CreditCard size={24} className="text-gray-600" />
                         <div>
-                          <p className="font-medium text-black">Pay with Card</p>
+                          <p className="font-medium text-black">
+                            Pay with Card
+                          </p>
                           <p className="text-sm text-gray-500">
                             Secure payment via Paystack
                           </p>
@@ -363,9 +378,10 @@ export default function CheckoutPage() {
                       className={`
                         w-full py-4 px-6 rounded-full font-medium text-base transition-all
                         flex items-center justify-center gap-3
-                        ${isProcessing
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-black text-white hover:bg-gray-800'
+                        ${
+                          isProcessing
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-black text-white hover:bg-gray-800"
                         }
                       `}
                     >
@@ -373,7 +389,11 @@ export default function CheckoutPage() {
                         <>
                           <motion.div
                             animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                            transition={{
+                              duration: 1,
+                              repeat: Infinity,
+                              ease: "linear",
+                            }}
                             className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                           />
                           Processing...
@@ -407,18 +427,27 @@ export default function CheckoutPage() {
                   <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto">
                     {items.map((item) => (
                       <div key={item.id} className="flex gap-4">
-                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 relative">
-                          <ProductImagePlaceholder variant={item.product.variant} />
-                          <span className="absolute -top-2 -right-2 w-5 h-5 bg-black text-white text-[10px] font-semibold rounded-full flex items-center justify-center">
-                            {item.quantity}
-                          </span>
+                        <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                          {item.product.images && item.product.images[0] ? (
+                            <img
+                              src={item.product.images[0]}
+                              alt={item.product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <ProductImagePlaceholder
+                              variant={item.product.variant}
+                            />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-black text-sm truncate">
                             {item.product.name}
                           </p>
                           {item.size && (
-                            <p className="text-xs text-gray-500">Size: {item.size}</p>
+                            <p className="text-xs text-gray-500">
+                              Size: {item.size}
+                            </p>
                           )}
                         </div>
                         <p className="font-mono text-sm text-black">
@@ -431,8 +460,12 @@ export default function CheckoutPage() {
                   {/* Divider */}
                   <div className="border-t border-gray-100 pt-4 space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal ({totalItems} items)</span>
-                      <span className="font-mono text-black">{formatPrice(totalPrice)}</span>
+                      <span className="text-gray-600">
+                        Subtotal ({totalItems} items)
+                      </span>
+                      <span className="font-mono text-black">
+                        {formatPrice(totalPrice)}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Shipping</span>
@@ -456,7 +489,8 @@ export default function CheckoutPage() {
                   {totalPrice < 50000 && (
                     <div className="mt-4 p-3 bg-amber-50 rounded-xl">
                       <p className="text-xs text-amber-800">
-                        Add {formatPrice(50000 - totalPrice)} more for free shipping
+                        Add {formatPrice(50000 - totalPrice)} more for free
+                        shipping
                       </p>
                     </div>
                   )}
@@ -471,9 +505,10 @@ export default function CheckoutPage() {
                       className={`
                         w-full py-4 px-6 rounded-full font-medium text-base transition-all
                         flex items-center justify-center gap-3
-                        ${isProcessing
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-black text-white hover:bg-gray-800'
+                        ${
+                          isProcessing
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-black text-white hover:bg-gray-800"
                         }
                       `}
                     >
@@ -481,7 +516,11 @@ export default function CheckoutPage() {
                         <>
                           <motion.div
                             animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                            transition={{
+                              duration: 1,
+                              repeat: Infinity,
+                              ease: "linear",
+                            }}
                             className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                           />
                           Processing...
@@ -515,5 +554,5 @@ export default function CheckoutPage() {
 
       <Footer />
     </main>
-  )
+  );
 }

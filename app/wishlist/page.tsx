@@ -1,14 +1,20 @@
-'use client'
+"use client";
 
-import { motion } from 'framer-motion'
-import Link from 'next/link'
-import { Navbar } from '@/components/layout/Navbar'
-import { Footer } from '@/components/layout/Footer'
-import { useWishlist } from '@/context/WishlistContext'
-import { useCart } from '@/context/CartContext'
-import { useToast } from '@/components/ui/Toast'
-import { formatPrice } from '@/lib/data/products'
-import { Heart, ShoppingBag, Trash2, ChevronRight, Package } from 'lucide-react'
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { useWishlist } from "@/context/WishlistContext";
+import { useCart } from "@/context/CartContext";
+import { useToast } from "@/components/ui/Toast";
+import { formatPrice } from "@/lib/utils/format";
+import {
+  Heart,
+  ShoppingBag,
+  Trash2,
+  ChevronRight,
+  Package,
+} from "lucide-react";
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -18,7 +24,7 @@ const staggerContainer = {
       staggerChildren: 0.1,
     },
   },
-}
+};
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -27,27 +33,27 @@ const fadeInUp = {
     y: 0,
     transition: { duration: 0.5 },
   },
-}
+};
 
 export default function WishlistPage() {
-  const { items, removeItem, clearWishlist } = useWishlist()
-  const { addItem: addToCart } = useCart()
-  const { showToast } = useToast()
+  const { items, removeItem, clearWishlist } = useWishlist();
+  const { addItem: addToCart } = useCart();
+  const { showToast } = useToast();
 
-  const handleAddToCart = (product: typeof items[0]) => {
-    addToCart(product, 1, product.sizes[0] || null)
-    showToast(`${product.name} added to cart!`, 'success')
-  }
+  const handleAddToCart = (product: (typeof items)[0]) => {
+    addToCart(product, 1, product.sizes[0] || null);
+    showToast(`${product.name} added to cart!`, "success");
+  };
 
   const handleRemove = (productId: string, productName: string) => {
-    removeItem(productId)
-    showToast(`${productName} removed from wishlist`, 'info')
-  }
+    removeItem(productId);
+    showToast(`${productName} removed from wishlist`, "info");
+  };
 
   const handleClearAll = () => {
-    clearWishlist()
-    showToast('Wishlist cleared', 'info')
-  }
+    clearWishlist();
+    showToast("Wishlist cleared", "info");
+  };
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -68,7 +74,7 @@ export default function WishlistPage() {
                   MY WISHLIST
                 </h1>
                 <p className="text-gray-600">
-                  {items.length} {items.length === 1 ? 'item' : 'items'} saved
+                  {items.length} {items.length === 1 ? "item" : "items"} saved
                 </p>
               </div>
               {items.length > 0 && (
@@ -100,7 +106,7 @@ export default function WishlistPage() {
                       {/* Product Image */}
                       <Link
                         href={`/products/${product.slug}`}
-                        className="w-32 h-32 bg-gray-100 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden"
+                        className="w-32 h-32 bg-gray-100 rounded-xl shrink-0 flex items-center justify-center overflow-hidden"
                       >
                         {product.images[0] ? (
                           <img
@@ -131,7 +137,9 @@ export default function WishlistPage() {
                             </p>
                           </div>
                           <button
-                            onClick={() => handleRemove(product.id, product.name)}
+                            onClick={() =>
+                              handleRemove(product.id, product.name)
+                            }
                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             aria-label="Remove from wishlist"
                           >
@@ -172,7 +180,9 @@ export default function WishlistPage() {
                         {/* Sizes */}
                         {product.sizes.length > 0 && (
                           <div className="flex items-center gap-2 mt-3">
-                            <span className="text-sm text-gray-500">Sizes:</span>
+                            <span className="text-sm text-gray-500">
+                              Sizes:
+                            </span>
                             <div className="flex gap-1">
                               {product.sizes.map((size) => (
                                 <span
@@ -200,7 +210,8 @@ export default function WishlistPage() {
                   Your wishlist is empty
                 </h3>
                 <p className="text-gray-500 mb-6">
-                  Save items you love by clicking the heart icon<br />
+                  Save items you love by clicking the heart icon
+                  <br />
                   on any product page.
                 </p>
                 <Link
@@ -218,5 +229,5 @@ export default function WishlistPage() {
 
       <Footer />
     </main>
-  )
+  );
 }

@@ -1,38 +1,83 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/ui/ProductCard";
-import { products, categories, formatPrice } from "@/lib/data/products";
 import { fadeInUp, staggerContainer } from "@/animations/variants";
-import { SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Loader2 } from "lucide-react";
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  compareAtPrice: number | null;
+  image: string | null;
+  category: string;
+  categorySlug: string;
+  inStock: boolean;
+  featured: boolean;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  productCount: number;
+}
+
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 0,
+  }).format(price);
+}
 
 export default function ShopPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("featured");
 
-  const filteredProducts = products.filter((product) => {
-    if (selectedCategory === "all") return true;
-    return (
-      product.category.toLowerCase().replace(/\s+/g, "-") === selectedCategory
-    );
-  });
-
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low":
-        return a.price - b.price;
-      case "price-high":
-        return b.price - a.price;
-      case "name":
-        return a.name.localeCompare(b.name);
-      case "featured":
-      default:
-        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+  // Fetch categories on mount
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch("/api/categories");
+        const data = await res.json();
+        setCategories(data.categories || []);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
     }
-  });
+    fetchCategories();
+  }, []);
+
+  // Fetch products when category or sort changes
+  useEffect(() => {
+    async function fetchProducts() {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          category: selectedCategory,
+          sort: sortBy,
+          limit: "50",
+        });
+        const res = await fetch(`/api/products?${params.toString()}`);
+        const data = await res.json();
+        setProducts(data.products || []);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchProducts();
+  }, [selectedCategory, sortBy]);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -102,6 +147,7 @@ export default function ShopPage() {
                 <option value="price-low">Price: Low to High</option>
                 <option value="price-high">Price: High to Low</option>
                 <option value="name">Name: A to Z</option>
+                <option value="newest">Newest</option>
               </select>
             </div>
           </motion.div>
@@ -113,59 +159,74 @@ export default function ShopPage() {
             transition={{ duration: 0.4, delay: 0.3 }}
             className="text-sm text-gray-500 mb-6"
           >
-            Showing {sortedProducts.length}{" "}
-            {sortedProducts.length === 1 ? "product" : "products"}
+            {isLoading ? (
+              "Loading..."
+            ) : (
+              <>
+                Showing {products.length}{" "}
+                {products.length === 1 ? "product" : "products"}
+              </>
+            )}
           </motion.p>
 
-          {/* Product Grid */}
-          <motion.div
-            key={selectedCategory + sortBy}
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-          >
-            {sortedProducts.map((product, index) => (
+          {/* Loading State */}
+          {isLoading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <>
+              {/* Product Grid */}
               <motion.div
-                key={product.id}
-                variants={fadeInUp}
-                custom={index}
-                transition={{ delay: index * 0.05 }}
+                key={selectedCategory + sortBy}
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
               >
-                <ProductCard
-                  title={product.name}
-                  price={formatPrice(product.price)}
-                  compareAtPrice={
-                    product.compareAtPrice
-                      ? formatPrice(product.compareAtPrice)
-                      : undefined
-                  }
-                  slug={product.slug}
-                  variant={product.variant}
-                  inStock={product.inStock}
-                  layout="grid"
-                />
+                {products.map((product, index) => (
+                  <motion.div
+                    key={product.id}
+                    variants={fadeInUp}
+                    custom={index}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <ProductCard
+                      title={product.name}
+                      price={formatPrice(product.price)}
+                      compareAtPrice={
+                        product.compareAtPrice
+                          ? formatPrice(product.compareAtPrice)
+                          : undefined
+                      }
+                      slug={product.slug}
+                      image={product.image}
+                      inStock={product.inStock}
+                      layout="grid"
+                    />
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
-          </motion.div>
 
-          {/* Empty State */}
-          {sortedProducts.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-20"
-            >
-              <p className="text-gray-500 text-lg">
-                No products found in this category.
-              </p>
-              <button
-                onClick={() => setSelectedCategory("all")}
-                className="mt-4 text-black underline hover:no-underline"
-              >
-                View all products
-              </button>
-            </motion.div>
+              {/* Empty State */}
+              {products.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-20"
+                >
+                  <p className="text-gray-500 text-lg">
+                    No products found in this category.
+                  </p>
+                  <button
+                    onClick={() => setSelectedCategory("all")}
+                    className="mt-4 text-black underline hover:no-underline"
+                  >
+                    View all products
+                  </button>
+                </motion.div>
+              )}
+            </>
           )}
         </div>
       </section>

@@ -26,6 +26,7 @@ interface OrderItem {
   size: string;
   quantity: number;
   price: number;
+  image: string | null;
 }
 
 interface OrderHistory {
@@ -376,8 +377,18 @@ export default function OrderDetailPage() {
                   key={item.id}
                   className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl"
                 >
-                  <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
-                    <Package size={24} className="text-gray-400" />
+                  <div className="w-16 h-16 rounded-lg bg-gray-200 overflow-hidden shrink-0 relative">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Package size={24} className="text-gray-400" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">{item.name}</p>

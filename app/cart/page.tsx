@@ -1,17 +1,24 @@
-'use client'
+"use client";
 
-import { motion } from 'framer-motion'
-import Link from 'next/link'
-import { Navbar } from '@/components/layout/Navbar'
-import { Footer } from '@/components/layout/Footer'
-import { ProductImagePlaceholder } from '@/components/ui/ProductImagePlaceholder'
-import { useCart } from '@/context/CartContext'
-import { formatPrice } from '@/lib/data/products'
-import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
-import { fadeInUp, staggerContainer } from '@/animations/variants'
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { ProductImagePlaceholder } from "@/components/ui/ProductImagePlaceholder";
+import { useCart } from "@/context/CartContext";
+import { formatPrice } from "@/lib/types/product";
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
+import { fadeInUp, staggerContainer } from "@/animations/variants";
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, totalItems, totalPrice, clearCart } = useCart()
+  const {
+    items,
+    removeItem,
+    updateQuantity,
+    totalItems,
+    totalPrice,
+    clearCart,
+  } = useCart();
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -31,8 +38,10 @@ export default function CartPage() {
             </h1>
             <p className="text-gray-600 text-lg">
               {totalItems === 0
-                ? 'Your cart is empty'
-                : `${totalItems} ${totalItems === 1 ? 'item' : 'items'} in your cart`}
+                ? "Your cart is empty"
+                : `${totalItems} ${
+                    totalItems === 1 ? "item" : "items"
+                  } in your cart`}
             </p>
           </motion.div>
         </div>
@@ -52,8 +61,8 @@ export default function CartPage() {
                 Your cart is empty
               </h2>
               <p className="text-gray-500 mb-8 max-w-md mx-auto">
-                Looks like you haven&apos;t added any premium caps to your cart yet.
-                Browse our collection to find your perfect fit.
+                Looks like you haven&apos;t added any premium caps to your cart
+                yet. Browse our collection to find your perfect fit.
               </p>
               <Link
                 href="/shop"
@@ -96,9 +105,19 @@ export default function CartPage() {
                         {/* Product Image */}
                         <Link
                           href={`/products/${item.product.slug}`}
-                          className="w-28 h-28 md:w-36 md:h-36 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100"
+                          className="relative w-28 h-28 md:w-36 md:h-36 rounded-xl overflow-hidden shrink-0 bg-gray-100"
                         >
-                          <ProductImagePlaceholder variant={item.product.variant} />
+                          {item.product.images && item.product.images[0] ? (
+                            <img
+                              src={item.product.images[0]}
+                              alt={item.product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <ProductImagePlaceholder
+                              variant={item.product.variant}
+                            />
+                          )}
                         </Link>
 
                         {/* Product Info */}
@@ -123,7 +142,9 @@ export default function CartPage() {
 
                             <div className="text-right">
                               <p className="font-mono text-lg font-semibold text-black">
-                                {formatPrice(item.product.price * item.quantity)}
+                                {formatPrice(
+                                  item.product.price * item.quantity
+                                )}
                               </p>
                               {item.quantity > 1 && (
                                 <p className="text-xs text-gray-500">
@@ -168,7 +189,9 @@ export default function CartPage() {
                             </div>
 
                             <button
-                              onClick={() => removeItem(item.product.id, item.size)}
+                              onClick={() =>
+                                removeItem(item.product.id, item.size)
+                              }
                               className="p-2 text-gray-400 hover:text-red-500 transition-colors"
                               aria-label="Remove item"
                             >
@@ -197,25 +220,30 @@ export default function CartPage() {
                   <div className="space-y-4 mb-6">
                     <div className="flex justify-between text-gray-600">
                       <span>Subtotal ({totalItems} items)</span>
-                      <span className="font-mono">{formatPrice(totalPrice)}</span>
+                      <span className="font-mono">
+                        {formatPrice(totalPrice)}
+                      </span>
                     </div>
                     <div className="flex justify-between text-gray-600">
                       <span>Shipping</span>
                       <span className="font-mono">
-                        {totalPrice >= 50000 ? 'Free' : formatPrice(3500)}
+                        {totalPrice >= 50000 ? "Free" : formatPrice(3500)}
                       </span>
                     </div>
                     <div className="border-t border-gray-100 pt-4 flex justify-between text-black font-semibold">
                       <span>Total</span>
                       <span className="font-mono text-lg">
-                        {formatPrice(totalPrice >= 50000 ? totalPrice : totalPrice + 3500)}
+                        {formatPrice(
+                          totalPrice >= 50000 ? totalPrice : totalPrice + 3500
+                        )}
                       </span>
                     </div>
                   </div>
 
                   {totalPrice < 50000 && (
                     <p className="text-xs text-gray-500 mb-6 bg-gray-50 p-3 rounded-lg">
-                      Add {formatPrice(50000 - totalPrice)} more for free shipping
+                      Add {formatPrice(50000 - totalPrice)} more for free
+                      shipping
                     </p>
                   )}
 
@@ -241,5 +269,5 @@ export default function CartPage() {
 
       <Footer />
     </main>
-  )
+  );
 }

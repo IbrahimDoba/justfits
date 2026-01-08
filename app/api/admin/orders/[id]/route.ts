@@ -23,7 +23,7 @@ export async function GET(
         items: {
           include: {
             variant: {
-              include: { product: { select: { name: true } } },
+              include: { product: { select: { name: true, images: true } } },
             },
           },
         },
@@ -56,6 +56,7 @@ export async function GET(
           size: item.variant.size,
           quantity: item.quantity,
           price: Number(item.price),
+          image: item.variant.product.images[0]?.url || null,
         })),
         subtotal: Number(order.subtotal),
         shipping: Number(order.shippingCost),
