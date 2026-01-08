@@ -191,6 +191,14 @@
   }
 }
 
+/* Force Light Theme Class */
+.light-theme {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  color: var(--foreground);
+  background-color: var(--background);
+}
+
 /* Base Styles */
 *,
 *::before,
