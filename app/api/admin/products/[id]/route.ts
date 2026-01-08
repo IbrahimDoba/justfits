@@ -213,26 +213,45 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Delete related records first (images, variants)
-    await prisma.productImage.deleteMany({ where: { productId: id } });
+    // Check if product has any orders
+    const variantsWithOrders = await prisma.productVariant.findMany({
+      where: { productId: id },
+      include: {
+        _count: {
+          select: { orderItems: true },
+        },
+      },
+    });
 
-    // Try to delete variants, mark unavailable if FK constraint
-    const variants = await prisma.productVariant.findMany({ where: { productId: id } });
-    for (const v of variants) {
-      try {
-        await prisma.productVariant.delete({ where: { id: v.id } });
-      } catch {
-        await prisma.productVariant.update({
-          where: { id: v.id },
-          data: { isAvailable: false, stockQuantity: 0 },
-        });
-      }
+    const hasOrders = variantsWithOrders.some((v) => v._count.orderItems > 0);
+
+    if (hasOrders) {
+      // Soft delete - archive the product instead
+      await prisma.product.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      // Mark all variants as unavailable
+      await prisma.productVariant.updateMany({
+        where: { productId: id },
+        data: { isAvailable: false, stockQuantity: 0 },
+      });
+
+      return NextResponse.json({
+        success: true,
+        archived: true,
+        message: "Product has orders and was archived instead of deleted",
+      });
     }
 
-    // Delete product
+    // No orders - safe to hard delete
+    // Delete related records first
+    await prisma.productImage.deleteMany({ where: { productId: id } });
+    await prisma.productVariant.deleteMany({ where: { productId: id } });
     await prisma.product.delete({ where: { id } });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deleted: true });
   } catch (error) {
     console.error("Delete product error:", error);
     return NextResponse.json(
