@@ -123,6 +123,19 @@ export default function ProductDetailPage() {
     }
   }, [slug]);
 
+  // Reset quantity if it exceeds max stock when size changes
+  // This hook must be before any conditional returns
+  useEffect(() => {
+    if (!product) return;
+    const variant = selectedSize
+      ? product.variants.find((v) => v.size === selectedSize)
+      : product.variants[0];
+    const stock = variant?.stockQuantity || 0;
+    if (quantity > stock && stock > 0) {
+      setQuantity(stock);
+    }
+  }, [product, selectedSize, quantity]);
+
   const isWishlisted = product ? isInWishlist(product.id) : false;
 
   if (notFoundState) {
@@ -145,18 +158,11 @@ export default function ProductDetailPage() {
     return null;
   }
 
-  // Calculate max stock for selected variant
+  // Calculate max stock for selected variant (for rendering)
   const selectedVariant = selectedSize
     ? product.variants.find((v) => v.size === selectedSize)
     : product.variants[0];
   const maxStock = selectedVariant?.stockQuantity || 0;
-
-  // Reset quantity if it exceeds new max stock when size changes
-  useEffect(() => {
-    if (quantity > maxStock && maxStock > 0) {
-      setQuantity(maxStock);
-    }
-  }, [maxStock, quantity]);
 
   const handleAddToCart = () => {
     // If only one size, auto-select it
