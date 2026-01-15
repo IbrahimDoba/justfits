@@ -1,107 +1,116 @@
-import OpenAI, { toFile } from "openai";
+import OpenAI from "openai";
+import fs from "fs";
+import path from "path";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 /**
- * Generate a model shot using the product image as reference
- * Uses GPT Image model with high input fidelity for accurate product representation
+ * Generate a model shot using the product image and a reference model image
+ * Uses GPT-Image model via Responses API for high-fidelity reference-based generation
  */
 export async function generateModelShot({
   productImageUrl,
+  referenceImagePath,
   productName,
-  gender,
-  skinColor,
   view,
   background,
   additionalDetails,
+  model = "gpt-4.1",
 }: {
   productImageUrl: string;
+  referenceImagePath: string;
   productName: string;
-  gender: string;
-  skinColor: string;
   view: string;
   background: string;
   additionalDetails?: string;
+  model?: string;
 }): Promise<string> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY environment variable is not set");
   }
 
-  // Fetch the product image and convert to buffer
-  const imageResponse = await fetch(productImageUrl);
-  if (!imageResponse.ok) {
-    throw new Error("Failed to fetch product image");
-  }
-  const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-
-  // Build the prompt for model shot generation
-  const viewDescriptions: Record<string, string> = {
-    "Front View": "facing the camera directly with a confident expression",
-    "Left Profile":
-      "turned to show left profile, looking slightly toward camera",
-    "Right Profile":
-      "turned to show right profile, looking slightly toward camera",
-    "3/4 View": "posed at a flattering three-quarter angle",
-    Lifestyle: "in a natural relaxed pose, candid lifestyle setting",
-    "Action Shot": "in dynamic motion, active lifestyle pose",
-  };
-
-  const backgroundDescriptions: Record<string, string> = {
-    "Studio White":
-      "clean white studio background with professional soft lighting",
-    "Studio Gray":
-      "professional gray gradient background with dramatic lighting",
-    "Urban Street": "stylish urban street setting with blurred city background",
-    Minimal: "minimalist solid neutral background",
-  };
-
-  const prompt = `Professional e-commerce product photography. Generate a photorealistic image of a stylish ${skinColor.toLowerCase()} skin tone ${gender.toLowerCase()} model wearing the cap/hat shown in the reference image.
-
-The model should be ${viewDescriptions[view] || viewDescriptions["Front View"]}.
-Background: ${
-    backgroundDescriptions[background] || backgroundDescriptions["Studio White"]
-  }.
-${additionalDetails ? `Additional styling: ${additionalDetails}` : ""}
-
-IMPORTANT: The cap MUST look exactly like the reference product image - same colors, logos, style, and details. The cap should be the main focus of the image. High fashion e-commerce quality.`;
-
   try {
-    // Use the Image Edit API with the product image as reference
-    const result = await openai.images.edit({
-      model: "gpt-image-1",
-      image: await toFile(imageBuffer, "product.png", { type: "image/png" }),
-      prompt,
-      size: "1024x1024",
-      input_fidelity: "high",
+    // 1. Fetch and encode product image
+    const productResponse = await fetch(productImageUrl);
+    if (!productResponse.ok) {
+      throw new Error("Failed to fetch product image");
+    }
+    const productBuffer = Buffer.from(await productResponse.arrayBuffer());
+    const productBase64 = productBuffer.toString("base64");
+
+    // 2. Read and encode reference model image
+    // referenceImagePath is like "/images/dark female.jpg"
+    const localRefPath = path.join(process.cwd(), "public", referenceImagePath);
+    if (!fs.existsSync(localRefPath)) {
+      throw new Error(`Reference image not found at ${localRefPath}`);
+    }
+    const refBuffer = fs.readFileSync(localRefPath);
+    const refBase64 = refBuffer.toString("base64");
+
+    // 3. Build the prompt
+    const safeProductName = productName || "clothing item";
+    const prompt = `Create a professional e-commerce studio photograph. 
+    The person from the first reference image is wearing the ${safeProductName} shown in the second reference image.
+    
+    Context:
+    - Pose: ${view}
+    - Setting: ${background}
+    - Style: High-end commercial fashion photography
+    ${additionalDetails ? `- Note: ${additionalDetails}` : ""}
+    
+    Technical Requirements:
+    - Maintain the exact facial features and appearance of the person in the first reference image.
+    - The ${safeProductName} must be rendered with high fidelity, matching the colors and details from the second reference image.
+    - Ensure a clean, professional integration of the ${safeProductName} onto the person.
+    - Lighting should be consistent with a professional studio setup.`;
+
+    // 4. Call GPT-Image via Responses API
+    // @ts-ignore - Responses API might not be in the types yet
+    const response = await openai.responses.create({
+      model: model,
+      input: [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: prompt },
+            {
+              type: "input_image",
+              image_url: `data:image/jpeg;base64,${refBase64}`,
+              detail: "high",
+            },
+            {
+              type: "input_image",
+              image_url: `data:image/jpeg;base64,${productBase64}`,
+              detail: "high",
+            },
+          ],
+        },
+      ],
+      tools: [{ type: "image_generation" }],
     });
 
-    const imageBase64 = result.data?.[0]?.b64_json;
-    if (!imageBase64) {
-      throw new Error("No image generated");
-    }
+    // 5. Extract generated image
+    // @ts-ignore
+    const imageData = response.output
+      .filter((output: any) => output.type === "image_generation_call")
+      .map((output: any) => output.result);
 
-    // Convert base64 to data URL for frontend display
-    return `data:image/png;base64,${imageBase64}`;
+    if (imageData.length > 0) {
+      return `data:image/png;base64,${imageData[0]}`;
+    } else {
+      // @ts-ignore
+      console.error("GPT-Image Output:", response.output);
+      throw new Error("No image generated by GPT-Image");
+    }
   } catch (error: unknown) {
-    console.error("OpenAI Image Generation Error:", error);
-
-    if (error instanceof OpenAI.APIError) {
-      if (error.status === 400) {
-        throw new Error(
-          "Invalid request. Please try a different image or prompt."
-        );
-      }
-      if (error.status === 429) {
-        throw new Error("Rate limit exceeded. Please try again in a moment.");
-      }
-      if (error.status === 500) {
-        throw new Error("OpenAI service error. Please try again.");
-      }
-    }
-
-    throw new Error("Failed to generate image. Please try again.");
+    console.error("GPT-Image Generation Error:", error);
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to generate image. Please try again."
+    );
   }
 }
 

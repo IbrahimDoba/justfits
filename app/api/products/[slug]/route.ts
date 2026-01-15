@@ -40,10 +40,9 @@ export async function GET(
             comment: true,
             isVerified: true,
             createdAt: true,
-            user: { select: { name: true, image: true } },
+            user: { select: { id: true, name: true, image: true } },
           },
           orderBy: { createdAt: "desc" },
-          take: 10,
         },
       },
     });
@@ -81,8 +80,15 @@ export async function GET(
       ? Math.min(...product.variants.map((v) => Number(v.price)))
       : Number(product.basePrice);
     const compareAtPrice = product.variants.find((v) => v.compareAtPrice)?.compareAtPrice;
+    // Calculate rating stats
+    const ratingDistribution = [0, 0, 0, 0, 0]; // Index 0 = 1 star, Index 4 = 5 stars
+    let totalRating = 0;
+    product.reviews.forEach((review) => {
+      ratingDistribution[review.rating - 1]++;
+      totalRating += review.rating;
+    });
     const avgRating = product.reviews.length > 0
-      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
+      ? totalRating / product.reviews.length
       : 0;
 
     const transformedProduct = {
@@ -102,6 +108,7 @@ export async function GET(
       reviews: product.reviews,
       avgRating,
       reviewCount: product.reviews.length,
+      ratingDistribution,
       metaTitle: product.metaTitle,
       metaDescription: product.metaDescription,
     };

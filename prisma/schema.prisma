@@ -81,6 +81,10 @@ model User {
   reviews   Review[]
   wishlist  WishlistItem[]
 
+  // Loyalty Relations
+  loyaltyCard    LoyaltyCard?
+  loyaltyRewards LoyaltyReward[]
+
   @@index([email])
   @@map("users")
 }
@@ -338,6 +342,7 @@ model Payment {
   // Payment gateway details
   transactionId  String? @unique
   paymentGateway String? // Paystack, Flutterwave, etc.
+  receiptUrl     String? // For bank transfers
 
   paidAt DateTime?
 
@@ -348,6 +353,34 @@ model Payment {
   @@index([status])
   @@index([transactionId])
   @@map("payments")
+}
+
+model StoreSetting {
+  id String @id @default("default")
+
+  // Store Info
+  storeName  String? @default("JUSTFITS")
+  storeEmail String? @default("support@justfits.com")
+  storePhone String? @default("+234 800 000 0000")
+
+  // Bank Details
+  bankName          String?
+  bankAccountName   String?
+  bankAccountNumber String?
+
+  // Pricing & Shipping
+  currency              String @default("NGN")
+  taxRate               Float  @default(0)
+  shippingFee           Float  @default(2500)
+  freeShippingThreshold Float? @default(50000)
+
+  // Inventory
+  lowStockThreshold Int @default(5)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("store_settings")
 }
 
 enum PaymentStatus {
@@ -407,4 +440,43 @@ model WishlistItem {
   @@unique([userId, productId])
   @@index([userId])
   @@map("wishlist_items")
+}
+
+// ============================================
+// LOYALTY PROGRAM
+// ============================================
+
+model LoyaltyCard {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  stamps             Int @default(0) // Current stamps (resets after reward)
+  totalStampsEarned  Int @default(0) // Lifetime stamps earned
+  totalRewardsEarned Int @default(0) // Total rewards unlocked
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("loyalty_cards")
+}
+
+model LoyaltyReward {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  code            String @unique // Unique redemption code
+  discountPercent Int    @default(30) // 30% off
+
+  isRedeemed Boolean   @default(false)
+  redeemedAt DateTime?
+  expiresAt  DateTime // Reward expires after certain time
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([code])
+  @@index([isRedeemed])
+  @@map("loyalty_rewards")
 }

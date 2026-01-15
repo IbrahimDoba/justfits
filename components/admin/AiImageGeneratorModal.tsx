@@ -33,15 +33,31 @@ const viewOptions = [
   { id: "action", label: "Action Shot", icon: "🏃" },
 ];
 
-const modelOptions = [
-  { id: "female", label: "Female" },
-  { id: "male", label: "Male" },
-];
-
-const skinTones = [
-  { id: "light", label: "Light", color: "#FFE0BD" },
-  { id: "medium", label: "Medium", color: "#C68642" },
-  { id: "dark", label: "Dark", color: "#8D5524" },
+const referenceImages = [
+  {
+    id: "dark-female",
+    label: "Dark Female",
+    path: "/images/dark female.jpg",
+    preview: "/images/dark female.jpg",
+  },
+  {
+    id: "dark-male",
+    label: "Dark Male",
+    path: "/images/dark male.jpg",
+    preview: "/images/dark male.jpg",
+  },
+  {
+    id: "white-female",
+    label: "White Female",
+    path: "/images/white female.jpg",
+    preview: "/images/white female.jpg",
+  },
+  {
+    id: "white-male",
+    label: "White Male",
+    path: "/images/white male.jpg",
+    preview: "/images/white male.jpg",
+  },
 ];
 
 const backgrounds = [
@@ -65,9 +81,11 @@ export default function AiImageGeneratorModal({
 
   // Generation Options
   const [selectedView, setSelectedView] = useState("front");
-  const [selectedModel, setSelectedModel] = useState("female");
-  const [selectedSkinTone, setSelectedSkinTone] = useState("medium");
+  const [selectedReferenceImage, setSelectedReferenceImage] =
+    useState("dark-female");
   const [selectedBackground, setSelectedBackground] = useState("studio-white");
+  const [selectedEngine, setSelectedEngine] = useState("openai");
+  const [selectedModel, setSelectedModel] = useState("gpt-4.1");
   const [additionalPrompt, setAdditionalPrompt] = useState("");
 
   // Generation State
@@ -91,12 +109,19 @@ export default function AiImageGeneratorModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceImageUrl: selectedSourceImage,
+          referenceImagePath:
+            referenceImages.find((r) => r.id === selectedReferenceImage)
+              ?.path || "/images/dark female.jpg",
           productName,
-          view: viewOptions.find((v) => v.id === selectedView)?.label || "Front View",
-          gender: selectedModel === "female" ? "Female" : "Male",
-          skinColor: skinTones.find((s) => s.id === selectedSkinTone)?.label || "Medium",
-          background: backgrounds.find((b) => b.id === selectedBackground)?.label || "Studio White",
+          view:
+            viewOptions.find((v) => v.id === selectedView)?.label ||
+            "Front View",
+          background:
+            backgrounds.find((b) => b.id === selectedBackground)?.label ||
+            "Studio White",
           additionalDetails: additionalPrompt,
+          engine: selectedEngine,
+          model: selectedModel,
         }),
       });
 
@@ -112,7 +137,9 @@ export default function AiImageGeneratorModal({
       setGenerationStep("");
     } catch (error) {
       console.error("Generation error:", error);
-      alert(error instanceof Error ? error.message : "Failed to generate image");
+      alert(
+        error instanceof Error ? error.message : "Failed to generate image"
+      );
       setGenerationStep("");
     } finally {
       setIsGenerating(false);
@@ -161,7 +188,9 @@ export default function AiImageGeneratorModal({
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-display tracking-wide">AI MODEL STUDIO</h2>
+                <h2 className="text-xl font-display tracking-wide">
+                  AI MODEL STUDIO
+                </h2>
                 <p className="text-sm text-gray-400 mt-0.5">
                   Generate professional model shots from your product
                 </p>
@@ -209,13 +238,120 @@ export default function AiImageGeneratorModal({
                     </div>
                   ) : (
                     <div className="p-4 bg-white rounded-xl border border-gray-200 text-center">
-                      <ImageIcon size={24} className="mx-auto text-gray-400 mb-2" />
+                      <ImageIcon
+                        size={24}
+                        className="mx-auto text-gray-400 mb-2"
+                      />
                       <p className="text-sm text-gray-500">
                         Upload product images first to use as reference
                       </p>
                     </div>
                   )}
                 </div>
+
+                {/* Engine Selection */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <Zap size={16} className="text-amber-500" />
+                    Generation Engine
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEngine("openai")}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        selectedEngine === "openai"
+                          ? "bg-white text-black shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      AI Generation
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedEngine("gemini");
+                        setSelectedModel("gemini-2.5-flash-image");
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        selectedEngine === "gemini"
+                          ? "bg-white text-black shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      Gemini AI
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-2 px-1">
+                    {selectedEngine === "openai"
+                      ? "Uses GPT-Image for high-fidelity generative results (slower)."
+                      : "Uses Gemini Nano Banana for fast, multimodal generation (instant)."}
+                  </p>
+                </div>
+
+                {/* Model Selection */}
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-3"
+                >
+                  <label className="block text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <Sparkles size={16} className="text-purple-500" />
+                    Generation Quality
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedModel(
+                          selectedEngine === "openai"
+                            ? "gpt-4.1"
+                            : "gemini-3-pro-image-preview"
+                        )
+                      }
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                        selectedModel === "gpt-4.1" ||
+                        selectedModel === "gemini-3-pro-image-preview"
+                          ? "bg-white text-black shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {selectedEngine === "openai"
+                        ? "High Fidelity"
+                        : "Pro Thinking"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedModel(
+                          selectedEngine === "openai"
+                            ? "gpt-4.1-mini"
+                            : "gemini-2.5-flash-image"
+                        )
+                      }
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                        selectedModel === "gpt-4.1-mini" ||
+                        selectedModel === "gemini-2.5-flash-image"
+                          ? "bg-white text-black shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      {selectedEngine === "openai"
+                        ? "Cost-Effective"
+                        : "Flash Speed"}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-500 px-1">
+                    {selectedEngine === "openai"
+                      ? selectedModel === "gpt-4.1"
+                        ? "Best quality, flagship model (~$0.07/img)."
+                        : "Fast & 6x cheaper (~$0.01/img)."
+                      : selectedModel === "gemini-3-pro-image-preview"
+                      ? "Advanced reasoning for professional assets."
+                      : "Optimized for high-volume, low-latency tasks."}
+                  </p>
+                </motion.div>
 
                 {/* View Selection */}
                 <div>
@@ -235,61 +371,61 @@ export default function AiImageGeneratorModal({
                         }`}
                       >
                         <span className="text-lg block mb-1">{view.icon}</span>
-                        <span className="text-xs font-medium">{view.label}</span>
+                        <span className="text-xs font-medium">
+                          {view.label}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Model Selection */}
+                {/* Reference Model Selection */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <User size={16} />
-                    Model
+                    Model Reference
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {modelOptions.map((model) => (
+                  <div className="grid grid-cols-2 gap-3">
+                    {referenceImages.map((ref) => (
                       <button
-                        key={model.id}
+                        key={ref.id}
                         type="button"
-                        onClick={() => setSelectedModel(model.id)}
-                        className={`px-4 py-3 rounded-xl font-medium transition-all ${
-                          selectedModel === model.id
-                            ? "bg-black text-white"
-                            : "bg-white border border-gray-200 hover:border-gray-300 text-gray-700"
+                        onClick={() => setSelectedReferenceImage(ref.id)}
+                        className={`relative aspect-3/4 rounded-xl overflow-hidden border-2 transition-all group ${
+                          selectedReferenceImage === ref.id
+                            ? "border-black ring-2 ring-black/20 shadow-lg"
+                            : "border-gray-200 hover:border-gray-300 hover:shadow-md"
                         }`}
                       >
-                        {model.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Skin Tone */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Skin Tone
-                  </label>
-                  <div className="flex gap-3">
-                    {skinTones.map((tone) => (
-                      <button
-                        key={tone.id}
-                        type="button"
-                        onClick={() => setSelectedSkinTone(tone.id)}
-                        className={`flex-1 p-3 rounded-xl transition-all flex flex-col items-center gap-2 ${
-                          selectedSkinTone === tone.id
-                            ? "bg-black text-white"
-                            : "bg-white border border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <div
-                          className="w-6 h-6 rounded-full border-2 border-white shadow-sm"
-                          style={{ backgroundColor: tone.color }}
+                        <img
+                          src={ref.preview}
+                          alt={ref.label}
+                          className="w-full h-full object-cover"
                         />
-                        <span className="text-xs font-medium">{tone.label}</span>
+                        {/* Overlay with label */}
+                        <div
+                          className={`absolute inset-x-0 bottom-0 py-2 px-3 transition-all ${
+                            selectedReferenceImage === ref.id
+                              ? "bg-black/90"
+                              : "bg-black/60 group-hover:bg-black/80"
+                          }`}
+                        >
+                          <p className="text-xs font-medium text-white text-center">
+                            {ref.label}
+                          </p>
+                        </div>
+                        {/* Selected indicator */}
+                        {selectedReferenceImage === ref.id && (
+                          <div className="absolute top-2 right-2 w-6 h-6 bg-black rounded-full flex items-center justify-center">
+                            <Check size={14} className="text-white" />
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Select a reference model to showcase your product
+                  </p>
                 </div>
 
                 {/* Background */}
@@ -339,8 +475,12 @@ export default function AiImageGeneratorModal({
                         <div className="w-20 h-20 rounded-full border-4 border-gray-200 border-t-black animate-spin" />
                         <Zap className="absolute inset-0 m-auto w-8 h-8 text-black" />
                       </div>
-                      <p className="mt-6 text-gray-900 font-semibold">{generationStep}</p>
-                      <p className="text-sm text-gray-500 mt-1">This usually takes 15-30 seconds</p>
+                      <p className="mt-6 text-gray-900 font-semibold">
+                        {generationStep}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        This usually takes 15-30 seconds
+                      </p>
                     </div>
                   ) : generatedImage ? (
                     <img
@@ -357,8 +497,8 @@ export default function AiImageGeneratorModal({
                         Ready to Generate
                       </h3>
                       <p className="text-gray-500 text-sm max-w-xs">
-                        Select your options and click generate to create a professional model shot
-                        of your product
+                        Select your options and click generate to create a
+                        professional model shot of your product
                       </p>
                     </div>
                   )}
@@ -389,7 +529,9 @@ export default function AiImageGeneratorModal({
                     <button
                       type="button"
                       onClick={handleGenerate}
-                      disabled={isGenerating || (!selectedSourceImage && !productName)}
+                      disabled={
+                        isGenerating || (!selectedSourceImage && !productName)
+                      }
                       className="w-full py-4 px-6 bg-black text-white rounded-2xl font-semibold hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 group"
                     >
                       {isGenerating ? (
@@ -413,7 +555,8 @@ export default function AiImageGeneratorModal({
 
                 {/* Info */}
                 <p className="text-xs text-gray-400 text-center mt-4">
-                  Powered by AI. Generated images may vary. Credits: 1 image per generation.
+                  Powered by AI. Generated images may vary. Credits: 1 image per
+                  generation.
                 </p>
               </div>
             </div>

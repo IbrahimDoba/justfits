@@ -1,20 +1,20 @@
-'use client'
+"use client";
 
-import { motion } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { ProductImagePlaceholder } from './ProductImagePlaceholder'
+import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import { ProductImagePlaceholder } from "./ProductImagePlaceholder";
 
 interface ProductCardProps {
-  title: string
-  price: string
-  slug?: string
-  compareAtPrice?: string
-  image?: string | null
-  variant?: 1 | 2 | 3
-  inStock?: boolean
-  layout?: 'carousel' | 'grid'
+  title: string;
+  price: string;
+  slug?: string;
+  compareAtPrice?: string;
+  image?: string | null;
+  variant?: 1 | 2 | 3;
+  inStock?: boolean;
+  layout?: "carousel" | "grid";
 }
 
 export function ProductCard({
@@ -25,14 +25,18 @@ export function ProductCard({
   image,
   variant = 1,
   inStock = true,
-  layout = 'carousel'
+  layout = "carousel",
 }: ProductCardProps) {
   const cardContent = (
     <motion.div
       whileHover={{ y: -4 }}
       className={`
         bg-white rounded-3xl overflow-hidden shadow-lg group
-        ${layout === 'carousel' ? 'flex-shrink-0 w-[280px] md:w-[320px]' : 'w-full'}
+        ${
+          layout === "carousel"
+            ? "flex-shrink-0 w-[280px] md:w-[320px]"
+            : "w-full"
+        }
       `}
     >
       {/* Product Image */}
@@ -42,8 +46,11 @@ export function ProductCard({
             src={image}
             alt={title}
             fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+            placeholder="blur"
+            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8+vzFfwAJUwo0T70Y+AAAAABJRU5ErkJggg=="
           />
         ) : (
           <ProductImagePlaceholder variant={variant} />
@@ -73,7 +80,9 @@ export function ProductCard({
           <div className="flex items-center gap-2">
             <p className="font-mono text-xs text-gray-900">{price}</p>
             {compareAtPrice && (
-              <p className="font-mono text-xs text-gray-400 line-through">{compareAtPrice}</p>
+              <p className="font-mono text-xs text-gray-400 line-through">
+                {compareAtPrice}
+              </p>
             )}
           </div>
         </div>
@@ -85,15 +94,15 @@ export function ProductCard({
         </motion.div>
       </div>
     </motion.div>
-  )
+  );
 
   if (slug) {
     return (
       <Link href={`/products/${slug}`} className="block">
         {cardContent}
       </Link>
-    )
+    );
   }
 
-  return cardContent
+  return cardContent;
 }

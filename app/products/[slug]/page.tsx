@@ -9,6 +9,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ProductImagePlaceholder } from "@/components/ui/ProductImagePlaceholder";
 import { ProductCard } from "@/components/ui/ProductCard";
+import { StarRating } from "@/components/ui/StarRating";
+import { ReviewModal } from "@/components/ui/ReviewModal";
+import { ReviewList } from "@/components/ui/ReviewList";
 import {
   ArrowLeft,
   Minus,
@@ -20,10 +23,13 @@ import {
   RotateCcw,
   Check,
   Loader2,
+  PenLine,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useToast } from "@/components/ui/Toast";
+import { useProduct } from "@/lib/hooks/useProduct";
+import { useReviews } from "@/lib/hooks/useReviews";
 
 interface ProductVariant {
   id: string;
@@ -34,6 +40,20 @@ interface ProductVariant {
   price: number;
   compareAtPrice: number | null;
   stockQuantity: number;
+}
+
+interface Review {
+  id: string;
+  rating: number;
+  title: string | null;
+  comment: string;
+  isVerified: boolean;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    image: string | null;
+  };
 }
 
 interface Product {
@@ -50,8 +70,10 @@ interface Product {
   inStock: boolean;
   featured: boolean;
   variants: ProductVariant[];
+  reviews: Review[];
   avgRating: number;
   reviewCount: number;
+  ratingDistribution: number[];
 }
 
 interface RelatedProduct {
@@ -76,16 +98,18 @@ export default function ProductDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [notFoundState, setNotFoundState] = useState(false);
+  // Use query hooks instead of manual state management
+  const { data: productData, isLoading, isError, error } = useProduct(slug);
+
+  const product = productData?.product;
+  const relatedProducts = productData?.relatedProducts || [];
 
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   const { addItem } = useCart();
   const {
@@ -95,33 +119,10 @@ export default function ProductDetailPage() {
   } = useWishlist();
   const { showToast } = useToast();
 
-  // Fetch product data
-  useEffect(() => {
-    async function fetchProduct() {
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/products/${slug}`);
-        if (!res.ok) {
-          if (res.status === 404) {
-            setNotFoundState(true);
-            return;
-          }
-          throw new Error("Failed to fetch product");
-        }
-        const data = await res.json();
-        setProduct(data.product);
-        setRelatedProducts(data.relatedProducts || []);
-      } catch (error) {
-        console.error("Error fetching product:", error);
-        setNotFoundState(true);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    if (slug) {
-      fetchProduct();
-    }
-  }, [slug]);
+  // Refresh reviews after submission or deletion
+  const refreshReviews = async () => {
+    // Query will auto-refresh via mutation invalidation
+  };
 
   // Reset quantity if it exceeds max stock when size changes
   // This hook must be before any conditional returns
@@ -138,7 +139,8 @@ export default function ProductDetailPage() {
 
   const isWishlisted = product ? isInWishlist(product.id) : false;
 
-  if (notFoundState) {
+  // Handle 404 errors
+  if (isError && error?.message === "Product not found") {
     notFound();
   }
 
@@ -339,6 +341,17 @@ export default function ProductDetailPage() {
                 {product.name}
               </h1>
 
+              {/* Rating */}
+              {product.reviewCount > 0 && (
+                <div className="flex items-center gap-2 mb-4">
+                  <StarRating rating={product.avgRating} size="sm" />
+                  <span className="text-sm text-gray-600">
+                    {product.avgRating.toFixed(1)} ({product.reviewCount}{" "}
+                    {product.reviewCount === 1 ? "review" : "reviews"})
+                  </span>
+                </div>
+              )}
+
               {/* Price */}
               <div className="flex items-center gap-4 mb-6">
                 <span className="font-mono text-2xl text-black">
@@ -530,6 +543,45 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </section>
+
+      {/* Reviews Section */}
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="font-display text-3xl md:text-4xl text-black">
+                CUSTOMER REVIEWS
+              </h2>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setIsReviewModalOpen(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-full font-medium text-sm hover:bg-gray-800 transition-colors"
+              >
+                <PenLine size={16} />
+                Write a Review
+              </motion.button>
+            </div>
+
+            <ReviewList
+              reviews={product.reviews}
+              avgRating={product.avgRating}
+              reviewCount={product.reviewCount}
+              ratingDistribution={product.ratingDistribution}
+              onReviewDeleted={refreshReviews}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Review Modal */}
+      <ReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        productSlug={product.slug}
+        productName={product.name}
+        onReviewSubmitted={refreshReviews}
+      />
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

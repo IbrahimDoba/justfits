@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db/prisma";
+import {
+  sendOrderConfirmationEmail,
+  sendAdminOrderNotification,
+} from "@/lib/services/email";
 
 interface CartItem {
   productSlug: string;
@@ -46,6 +50,8 @@ export async function POST(request: Request) {
       subtotal,
       shippingCost,
       total,
+      rewardCode,
+      discount,
     } = body;
 
     // Validate required fields
@@ -57,10 +63,7 @@ export async function POST(request: Request) {
     }
 
     if (!items || items.length === 0) {
-      return NextResponse.json(
-        { error: "Cart is empty" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
     // Create or find shipping address
@@ -91,7 +94,9 @@ export async function POST(request: Request) {
 
       if (product) {
         // Find variant by size
-        const variant = product.variants.find((v: ProductVariant) => v.size === item.size);
+        const variant = product.variants.find(
+          (v: ProductVariant) => v.size === item.size
+        );
         if (variant) {
           variantId = variant.id;
         } else if (product.variants.length > 0) {
@@ -102,8 +107,10 @@ export async function POST(request: Request) {
           const newVariant = await prisma.productVariant.create({
             data: {
               productId: product.id,
-              sku: `${product.slug}-${item.size || 'default'}`.toUpperCase().replace(/-/g, '_'),
-              name: `${product.name} - ${item.size || 'Default'}`,
+              sku: `${product.slug}-${item.size || "default"}`
+                .toUpperCase()
+                .replace(/-/g, "_"),
+              name: `${product.name} - ${item.size || "Default"}`,
               color: "Default",
               size: item.size || "One Size",
               price: item.price,
@@ -137,8 +144,10 @@ export async function POST(request: Request) {
         const newVariant = await prisma.productVariant.create({
           data: {
             productId: newProduct.id,
-            sku: `${item.productSlug}-${item.size || 'default'}`.toUpperCase().replace(/-/g, '_'),
-            name: `${item.productName} - ${item.size || 'Default'}`,
+            sku: `${item.productSlug}-${item.size || "default"}`
+              .toUpperCase()
+              .replace(/-/g, "_"),
+            name: `${item.productName} - ${item.size || "Default"}`,
             color: "Default",
             size: item.size || "One Size",
             price: item.price,
@@ -156,7 +165,29 @@ export async function POST(request: Request) {
       });
     }
 
-    // Create order with items
+    // If reward code provided, verify and mark as redeemed
+    if (rewardCode) {
+      const reward = await prisma.loyaltyReward.findUnique({
+        where: { code: rewardCode.toUpperCase() },
+      });
+
+      if (
+        reward &&
+        reward.userId === session.user.id &&
+        !reward.isRedeemed &&
+        new Date(reward.expiresAt) > new Date()
+      ) {
+        await prisma.loyaltyReward.update({
+          where: { id: reward.id },
+          data: {
+            isRedeemed: true,
+            redeemedAt: new Date(),
+          },
+        });
+      }
+    }
+
+    // Create order with items and payment
     const order = await prisma.order.create({
       data: {
         orderNumber: generateOrderNumber(),
@@ -167,8 +198,20 @@ export async function POST(request: Request) {
         shippingCost: shippingCost,
         tax: 0,
         total: total,
+        notes: rewardCode
+          ? `Reward code applied: ${rewardCode} (-${discount || 0}%)`
+          : null,
         items: {
           create: orderItems,
+        },
+        payment: {
+          create: {
+            amount: total,
+            currency: "NGN",
+            status: "PENDING",
+            method: "BANK_TRANSFER",
+            receiptUrl: body.receiptUrl || null,
+          },
         },
       },
       include: {
@@ -182,8 +225,56 @@ export async function POST(request: Request) {
           },
         },
         shippingAddress: true,
+        payment: true,
       },
     });
+
+    // Send order confirmation email (don't await to not block response)
+    sendOrderConfirmationEmail({
+      orderNumber: order.orderNumber,
+      customerName: `${firstName} ${lastName}`,
+      customerEmail: email,
+      items: (items as CartItem[]).map((item) => ({
+        name: item.productName,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      subtotal,
+      shippingCost,
+      discount: discount || undefined,
+      total,
+      shippingAddress: {
+        street: address,
+        city,
+        state,
+        postalCode,
+      },
+    }).catch((err) => console.error("Failed to send confirmation email:", err));
+
+    // Send admin notification email (don't await to not block response)
+    sendAdminOrderNotification({
+      orderNumber: order.orderNumber,
+      customerName: `${firstName} ${lastName}`,
+      customerEmail: email,
+      customerPhone: phone,
+      items: (items as CartItem[]).map((item) => ({
+        name: item.productName,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      subtotal,
+      shippingCost,
+      discount: discount || undefined,
+      total,
+      shippingAddress: {
+        street: address,
+        city,
+        state,
+        postalCode,
+      },
+    }).catch((err) => console.error("Failed to send admin notification:", err));
 
     return NextResponse.json({
       success: true,

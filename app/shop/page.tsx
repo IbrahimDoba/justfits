@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ProductCard } from "@/components/ui/ProductCard";
 import { fadeInUp, staggerContainer } from "@/animations/variants";
 import { SlidersHorizontal, Loader2 } from "lucide-react";
+import { useProducts } from "@/lib/hooks/useProducts";
+import { useCategories } from "@/lib/hooks/useCategories";
 
 interface Product {
   id: string;
@@ -37,47 +39,19 @@ function formatPrice(price: number): string {
 }
 
 export default function ShopPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("featured");
 
-  // Fetch categories on mount
-  useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const res = await fetch("/api/categories");
-        const data = await res.json();
-        setCategories(data.categories || []);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
-    }
-    fetchCategories();
-  }, []);
+  // Use query hooks instead of manual state management
+  const { data: categories = [], isLoading: categoriesLoading } =
+    useCategories();
+  const { data: products = [], isLoading: productsLoading } = useProducts({
+    category: selectedCategory,
+    sort: sortBy,
+    limit: 50,
+  });
 
-  // Fetch products when category or sort changes
-  useEffect(() => {
-    async function fetchProducts() {
-      setIsLoading(true);
-      try {
-        const params = new URLSearchParams({
-          category: selectedCategory,
-          sort: sortBy,
-          limit: "50",
-        });
-        const res = await fetch(`/api/products?${params.toString()}`);
-        const data = await res.json();
-        setProducts(data.products || []);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchProducts();
-  }, [selectedCategory, sortBy]);
+  const isLoading = productsLoading;
 
   return (
     <main className="min-h-screen bg-gray-50">

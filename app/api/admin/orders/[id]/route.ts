@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { auth } from "@/lib/auth";
+import { awardLoyaltyStamp } from "@/lib/services/loyalty";
+import { sendOrderStatusEmail } from "@/lib/services/email";
 
 // GET /api/admin/orders/[id] - Get a single order
 export async function GET(
@@ -65,6 +67,7 @@ export async function GET(
         status: order.status.toLowerCase(),
         paymentStatus: order.payment?.status.toLowerCase() || "pending",
         paymentMethod: order.payment?.method || "N/A",
+        receiptUrl: order.payment?.receiptUrl || null,
         trackingNumber: null, // Add when schema supports it
         carrierName: null,
         internalNotes: order.notes || "",
@@ -100,15 +103,72 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { status, trackingNumber, notes } = body;
+    const { status, notes } = body;
 
-    const order = await prisma.order.update({
+    const newStatus = status?.toUpperCase();
+
+    // Get current order with items and user to check status and reduce stock
+    const currentOrder = await prisma.order.findUnique({
       where: { orderNumber: id },
-      data: {
-        status: status?.toUpperCase(),
-        notes,
+      include: {
+        items: true,
+        user: { select: { name: true, email: true } },
       },
     });
+
+    if (!currentOrder) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // Check if status is changing to CONFIRMED from a non-confirmed status
+    const isBeingConfirmed =
+      newStatus === "CONFIRMED" && currentOrder.status !== "CONFIRMED";
+
+    // Use transaction to update order and reduce stock atomically
+    const order = await prisma.$transaction(async (tx) => {
+      // If order is being confirmed, reduce stock for each item
+      if (isBeingConfirmed) {
+        for (const item of currentOrder.items) {
+          await tx.productVariant.update({
+            where: { id: item.variantId },
+            data: {
+              stockQuantity: {
+                decrement: item.quantity,
+              },
+            },
+          });
+        }
+      }
+
+      // Update the order status
+      return tx.order.update({
+        where: { orderNumber: id },
+        data: {
+          status: newStatus,
+          notes,
+        },
+      });
+    });
+
+    // Award loyalty stamp when order is confirmed (outside transaction for simplicity)
+    if (isBeingConfirmed) {
+      await awardLoyaltyStamp(currentOrder.userId);
+    }
+
+    // Send status update email for important status changes
+    const emailStatuses = ["PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
+    if (
+      emailStatuses.includes(newStatus) &&
+      currentOrder.status !== newStatus &&
+      currentOrder.user.email
+    ) {
+      sendOrderStatusEmail({
+        orderNumber: order.orderNumber,
+        customerName: currentOrder.user.name || "Customer",
+        customerEmail: currentOrder.user.email,
+        status: newStatus,
+      }).catch((err) => console.error("Failed to send status email:", err));
+    }
 
     return NextResponse.json({
       order: {

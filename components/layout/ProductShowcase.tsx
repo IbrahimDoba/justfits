@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { ArrowUpRight, Loader2 } from "lucide-react";
+import { useFeaturedProducts } from "@/lib/hooks/useFeaturedProducts";
 
 interface Product {
   id: string;
@@ -24,23 +24,8 @@ function formatPrice(price: number): string {
 }
 
 export function ProductShowcase() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchProducts() {
-      try {
-        const res = await fetch("/api/products?limit=8&sort=featured");
-        const data = await res.json();
-        setProducts(data.products || []);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchProducts();
-  }, []);
+  // Use query hook for featured products
+  const { data: products = [], isLoading } = useFeaturedProducts(8);
 
   if (isLoading) {
     return (
@@ -208,7 +193,9 @@ function ProductCard({ product, variant }: ProductCardProps) {
             <h3 className="font-body text-lg font-medium text-white mb-1 line-clamp-1">
               {product.name}
             </h3>
-            <p className="text-sm text-white/70">{formatPrice(product.price)}</p>
+            <p className="text-sm text-white/70">
+              {formatPrice(product.price)}
+            </p>
           </div>
 
           {/* View Button - Appears on Hover */}

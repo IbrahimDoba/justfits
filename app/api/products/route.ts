@@ -62,23 +62,37 @@ export async function GET(request: NextRequest) {
         skip,
         take: limit,
         orderBy,
-        include: {
-          category: { select: { name: true, slug: true } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          basePrice: true,
+          featured: true,
+          category: {
+            select: {
+              name: true,
+              slug: true,
+            },
+          },
+          // Optimized variant fetching: only get what's needed for min/max calculation
           variants: {
             where: { isAvailable: true },
             select: {
-              id: true,
-              sku: true,
-              size: true,
-              color: true,
               price: true,
               compareAtPrice: true,
               stockQuantity: true,
+              // Minimal data needed to determine "in stock"
             },
           },
+          // Optimized image fetching: get only primary image or first one
           images: {
             orderBy: { position: "asc" },
-            select: { url: true, alt: true, isPrimary: true },
+            take: 1, // LIMIT TO 1 IMAGE
+            select: {
+              url: true,
+              isPrimary: true,
+            },
           },
         },
       }),
@@ -87,29 +101,44 @@ export async function GET(request: NextRequest) {
 
     // Transform products for frontend
     const transformedProducts = products.map((product) => {
-      const primaryImage = product.images.find((img) => img.isPrimary) || product.images[0];
-      const totalStock = product.variants.reduce((sum, v) => sum + v.stockQuantity, 0);
-      const sizes = [...new Set(product.variants.map((v) => v.size))];
-      const lowestPrice = product.variants.length > 0
-        ? Math.min(...product.variants.map((v) => Number(v.price)))
-        : Number(product.basePrice);
-      const compareAtPrice = product.variants.find((v) => v.compareAtPrice)?.compareAtPrice;
+      const primaryImage = product.images[0];
+      const totalStock = product.variants.reduce(
+        (sum, v) => sum + v.stockQuantity,
+        0
+      );
+
+      // Calculate price range
+      let lowestPrice = Number(product.basePrice);
+      let compareAtPrice = null;
+
+      if (product.variants.length > 0) {
+        const prices = product.variants.map((v) => Number(v.price));
+        lowestPrice = Math.min(...prices);
+
+        // Find compare at price (if any variant has one)
+        const variantWithCompare = product.variants.find(
+          (v) => v.compareAtPrice
+        );
+        if (variantWithCompare?.compareAtPrice) {
+          compareAtPrice = Number(variantWithCompare.compareAtPrice);
+        }
+      }
 
       return {
         id: product.id,
         name: product.name,
         slug: product.slug,
-        description: product.description,
+        description: "", // Don't send description for list view to save bandwidth
         price: lowestPrice,
-        compareAtPrice: compareAtPrice ? Number(compareAtPrice) : null,
+        compareAtPrice,
         image: primaryImage?.url || null,
-        images: product.images.map((img) => img.url),
+        images: product.images.map((img) => img.url), // Will only be 1
         category: product.category.name,
         categorySlug: product.category.slug,
-        sizes,
+        sizes: [], // Not needed for list view
         inStock: totalStock > 0,
         featured: product.featured,
-        variants: product.variants,
+        variants: [], // Exclude variants array to save massive bandwidth
       };
     });
 

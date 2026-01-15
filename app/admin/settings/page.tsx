@@ -1,33 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Eye, EyeOff, Check } from "lucide-react";
+import { Save, Eye, EyeOff, Check, Loader2 } from "lucide-react";
 
 export default function SettingsPage() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [settings, setSettings] = useState({
     storeName: "JUSTFITS",
     storeEmail: "support@justfits.com",
     storePhone: "+234 800 000 0000",
+    bankName: "",
+    bankAccountName: "",
+    bankAccountNumber: "",
     currency: "NGN",
     taxRate: "0",
     shippingFee: "2500",
     freeShippingThreshold: "50000",
     lowStockThreshold: "5",
-    enableGoogleAuth: true,
-    enableEmailAuth: true,
   });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch("/api/admin/settings");
+        if (response.ok) {
+          const data = await response.json();
+          setSettings({
+            ...data,
+            taxRate: (data.taxRate || 0).toString(),
+            shippingFee: (data.shippingFee || 0).toString(),
+            freeShippingThreshold: (data.freeShippingThreshold || 0).toString(),
+            bankName: data.bankName || "",
+            bankAccountName: data.bankAccountName || "",
+            bankAccountNumber: data.bankAccountNumber || "",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      const response = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      if (response.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 lg:p-8">
@@ -94,11 +140,75 @@ export default function SettingsPage() {
           </div>
         </motion.div>
 
-        {/* Pricing Settings */}
+        {/* Bank Details */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
+        >
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Bank Transfer Details
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Bank Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. GTBank"
+                value={settings.bankName || ""}
+                onChange={(e) =>
+                  setSettings({ ...settings, bankName: e.target.value })
+                }
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Account Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. JUSTFITS NIGERIA"
+                  value={settings.bankAccountName || ""}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      bankAccountName: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Account Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 0123456789"
+                  value={settings.bankAccountNumber || ""}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      bankAccountNumber: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Pricing Settings */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
         >
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -174,7 +284,7 @@ export default function SettingsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.3 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
         >
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -203,7 +313,7 @@ export default function SettingsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
           className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
         >
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -252,7 +362,7 @@ export default function SettingsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.5 }}
         >
           <button
             onClick={handleSave}

@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Bebas_Neue, JetBrains_Mono, Playfair_Display } from "next/font/google";
+import {
+  Inter,
+  Bebas_Neue,
+  JetBrains_Mono,
+  Playfair_Display,
+} from "next/font/google";
 import { SessionProvider } from "@/components/providers/SessionProvider";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -38,36 +44,9 @@ const playfairDisplay = Playfair_Display({
   style: ["normal", "italic"],
 });
 
-export const metadata: Metadata = {
-  title: "JUSTFITS - Premium Car-Themed Caps",
-  description: "Premium car-themed caps featuring Mercedes-Benz, BMW, Porsche designs. Limited drops, high quality, global appeal.",
-  keywords: ["caps", "hats", "car themed", "Mercedes-Benz", "BMW", "Porsche", "premium caps", "luxury streetwear"],
-  authors: [{ name: "JUSTFITS" }],
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "https://justfits.com",
-    siteName: "JUSTFITS",
-    title: "JUSTFITS - Premium Car-Themed Caps",
-    description: "Premium car-themed caps featuring Mercedes-Benz, BMW, Porsche designs.",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "JUSTFITS - Premium Car-Themed Caps",
-    description: "Premium car-themed caps featuring Mercedes-Benz, BMW, Porsche designs.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-};
+import { defaultMetadata } from "@/config/siteConfig";
+
+export const metadata: Metadata = defaultMetadata;
 
 export default function RootLayout({
   children,
@@ -75,17 +54,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable}`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable}`}
+    >
       <body className="antialiased">
         <SessionProvider>
-          <ToastProvider>
-            <WishlistProvider>
-              <CartProvider>
-                {children}
-                <CartDrawer />
-              </CartProvider>
-            </WishlistProvider>
-          </ToastProvider>
+          <QueryProvider>
+            <ToastProvider>
+              <WishlistProvider>
+                <CartProvider>
+                  {children}
+                  <CartDrawer />
+                </CartProvider>
+              </WishlistProvider>
+            </ToastProvider>
+          </QueryProvider>
         </SessionProvider>
       </body>
     </html>

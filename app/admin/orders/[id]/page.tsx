@@ -57,6 +57,7 @@ interface Order {
   status: string;
   paymentStatus: string;
   paymentMethod: string;
+  receiptUrl: string | null;
   trackingNumber: string | null;
   carrierName: string | null;
   internalNotes: string;
@@ -497,6 +498,56 @@ export default function OrderDetailPage() {
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Phone size={16} />
                   {order.customer.phone}
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Payment Info */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              Payment Information
+            </h2>
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Method</span>
+                <span className="font-medium text-gray-900 capitalize">
+                  {order.paymentMethod.replace("_", " ")}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Status</span>
+                <span className="font-medium text-gray-900 capitalize">
+                  {order.paymentStatus}
+                </span>
+              </div>
+              {order.receiptUrl && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-sm font-medium text-gray-900 mb-2">
+                    Payment Receipt
+                  </p>
+                  <a
+                    href={order.receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block relative aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-200 hover:opacity-90 transition-opacity"
+                  >
+                    <img
+                      src={order.receiptUrl}
+                      alt="Payment Receipt"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
+                      <span className="bg-white px-3 py-1.5 rounded-full text-xs font-medium shadow-sm opacity-0 hover:opacity-100 transition-opacity">
+                        View Full Size
+                      </span>
+                    </div>
+                  </a>
                 </div>
               )}
             </div>

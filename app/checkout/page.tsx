@@ -11,7 +11,17 @@ import { ProductImagePlaceholder } from "@/components/ui/ProductImagePlaceholder
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/components/ui/Toast";
 import { formatPrice } from "@/lib/utils/format";
-import { ArrowLeft, Lock, Truck, CreditCard, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Lock,
+  Truck,
+  CreditCard,
+  ShieldCheck,
+  Tag,
+  X,
+  Loader2,
+  Check,
+} from "lucide-react";
 
 const nigerianStates = [
   { value: "", label: "Select State" },
@@ -69,8 +79,47 @@ export default function CheckoutPage() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // Reward code state
+  const [rewardCode, setRewardCode] = useState("");
+  const [isValidatingReward, setIsValidatingReward] = useState(false);
+  const [appliedReward, setAppliedReward] = useState<{
+    code: string;
+    discountPercent: number;
+  } | null>(null);
+
+  const [bankDetails, setBankDetails] = useState<{
+    bankName: string;
+    bankAccountName: string;
+    bankAccountNumber: string;
+  } | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
   const shippingCost = totalPrice >= 50000 ? 0 : 3500;
-  const orderTotal = totalPrice + shippingCost;
+  const discountAmount = appliedReward
+    ? Math.round((totalPrice * appliedReward.discountPercent) / 100)
+    : 0;
+  const orderTotal = totalPrice - discountAmount + shippingCost;
+
+  // Fetch bank details
+  useState(() => {
+    const fetchBankDetails = async () => {
+      try {
+        const response = await fetch("/api/admin/settings");
+        if (response.ok) {
+          const data = await response.json();
+          setBankDetails({
+            bankName: data.bankName,
+            bankAccountName: data.bankAccountName,
+            bankAccountNumber: data.bankAccountNumber,
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching bank details:", error);
+      }
+    };
+    fetchBankDetails();
+  });
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -111,11 +160,111 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const applyRewardCode = async () => {
+    if (!rewardCode.trim()) {
+      showToast("Please enter a reward code", "error");
+      return;
+    }
+
+    setIsValidatingReward(true);
+    try {
+      const response = await fetch("/api/rewards/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: rewardCode.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showToast(data.error || "Invalid reward code", "error");
+        return;
+      }
+
+      setAppliedReward({
+        code: data.reward.code,
+        discountPercent: data.reward.discountPercent,
+      });
+      showToast(`${data.reward.discountPercent}% discount applied!`, "success");
+    } catch (error) {
+      console.error("Error validating reward:", error);
+      showToast("Failed to validate reward code", "error");
+    } finally {
+      setIsValidatingReward(false);
+    }
+  };
+
+  const removeRewardCode = () => {
+    setAppliedReward(null);
+    setRewardCode("");
+    showToast("Reward code removed", "success");
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // 1. Get signature
+      const timestamp = Math.round(new Date().getTime() / 1000);
+      const paramsToSign = {
+        timestamp,
+        folder: "receipts",
+      };
+
+      const signResponse = await fetch("/api/admin/upload/sign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paramsToSign }),
+      });
+
+      const { signature } = await signResponse.json();
+
+      // 2. Upload to Cloudinary
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+      formDataUpload.append(
+        "api_key",
+        process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || ""
+      );
+      formDataUpload.append("timestamp", timestamp.toString());
+      formDataUpload.append("signature", signature);
+      formDataUpload.append("folder", "receipts");
+
+      const uploadResponse = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formDataUpload,
+        }
+      );
+
+      const uploadData = await uploadResponse.json();
+      if (uploadResponse.ok) {
+        setReceiptUrl(uploadData.secure_url);
+        showToast("Receipt uploaded successfully", "success");
+      } else {
+        throw new Error(uploadData.error?.message || "Upload failed");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      showToast("Failed to upload receipt", "error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       showToast("Please fill in all required fields", "error");
+      return;
+    }
+
+    if (!receiptUrl) {
+      showToast("Please upload your payment receipt", "error");
       return;
     }
 
@@ -147,6 +296,10 @@ export default function CheckoutPage() {
         subtotal: totalPrice,
         shippingCost: shippingCost,
         total: orderTotal,
+        rewardCode: appliedReward?.code || null,
+        discount: appliedReward?.discountPercent || null,
+        receiptUrl: receiptUrl,
+        paymentMethod: "BANK_TRANSFER",
       };
 
       // Send order to API
@@ -239,7 +392,11 @@ export default function CheckoutPage() {
                   CHECKOUT
                 </h1>
 
-                <form onSubmit={handleSubmit} className="space-y-8">
+                <form
+                  id="checkout-form"
+                  onSubmit={handleSubmit}
+                  className="space-y-8"
+                >
                   {/* Contact Information */}
                   <div>
                     <h2 className="font-heading font-semibold text-lg text-black mb-4 flex items-center gap-2">
@@ -349,20 +506,99 @@ export default function CheckoutPage() {
                       <span className="w-7 h-7 bg-black text-white text-sm rounded-full flex items-center justify-center">
                         3
                       </span>
-                      Payment
+                      Payment (Bank Transfer)
                     </h2>
-                    <div className="bg-white rounded-2xl p-6 shadow-sm">
-                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl mb-4">
-                        <CreditCard size={24} className="text-gray-600" />
-                        <div>
-                          <p className="font-medium text-black">
-                            Pay with Card
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            Secure payment via Paystack
-                          </p>
+                    <div className="bg-white rounded-2xl p-6 shadow-sm space-y-6">
+                      {/* Bank Details */}
+                      <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <CreditCard size={16} />
+                          Transfer to:
+                        </h3>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Bank Name</span>
+                            <span className="font-medium text-black">
+                              {bankDetails?.bankName || "Loading..."}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">Account Name</span>
+                            <span className="font-medium text-black">
+                              {bankDetails?.bankAccountName || "Loading..."}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-gray-500">
+                              Account Number
+                            </span>
+                            <span className="font-mono font-bold text-black tracking-wider">
+                              {bankDetails?.bankAccountNumber || "Loading..."}
+                            </span>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Receipt Upload */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Upload Payment Receipt
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            id="receipt-upload"
+                            disabled={isUploading}
+                          />
+                          <label
+                            htmlFor="receipt-upload"
+                            className={`
+                              flex flex-col items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-gray-200 border-dashed rounded-2xl appearance-none cursor-pointer hover:border-black focus:outline-none
+                              ${
+                                receiptUrl ? "border-green-500 bg-green-50" : ""
+                              }
+                              ${
+                                isUploading
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }
+                            `}
+                          >
+                            {isUploading ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                                <span className="text-sm text-gray-500">
+                                  Uploading...
+                                </span>
+                              </div>
+                            ) : receiptUrl ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <Check className="w-8 h-8 text-green-500" />
+                                <span className="text-sm font-medium text-green-700">
+                                  Receipt Uploaded
+                                </span>
+                                <span className="text-xs text-green-600 underline">
+                                  Change file
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-2 text-gray-500">
+                                <Truck className="w-8 h-8" />
+                                <span className="text-sm">
+                                  Click to upload receipt image
+                                </span>
+                                <span className="text-xs">
+                                  PNG, JPG up to 5MB
+                                </span>
+                              </div>
+                            )}
+                          </label>
+                        </div>
+                      </div>
+
                       <p className="text-xs text-gray-500 flex items-center gap-2">
                         <Lock size={14} />
                         Your payment information is encrypted and secure
@@ -374,12 +610,12 @@ export default function CheckoutPage() {
                   <div className="lg:hidden">
                     <button
                       type="submit"
-                      disabled={isProcessing}
+                      disabled={isProcessing || isUploading}
                       className={`
                         w-full py-4 px-6 rounded-full font-medium text-base transition-all
                         flex items-center justify-center gap-3
                         ${
-                          isProcessing
+                          isProcessing || isUploading
                             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                             : "bg-black text-white hover:bg-gray-800"
                         }
@@ -457,7 +693,67 @@ export default function CheckoutPage() {
                     ))}
                   </div>
 
-                  {/* Divider */}
+                  {/* Reward Code Section */}
+                  <div className="border-t border-gray-100 pt-4 mb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Tag size={16} className="text-gray-500" />
+                      <span className="text-sm font-medium text-gray-700">
+                        Reward Code
+                      </span>
+                    </div>
+                    {appliedReward ? (
+                      <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl border border-green-100">
+                        <div className="flex items-center gap-2">
+                          <Check size={16} className="text-green-600" />
+                          <div>
+                            <p className="text-sm font-medium text-green-800">
+                              {appliedReward.discountPercent}% OFF Applied
+                            </p>
+                            <p className="text-xs text-green-600 font-mono">
+                              {appliedReward.code}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeRewardCode}
+                          className="p-1 text-green-600 hover:text-green-800 transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Enter reward code"
+                          value={rewardCode}
+                          onChange={(e) =>
+                            setRewardCode(e.target.value.toUpperCase())
+                          }
+                          className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent text-gray-900 placeholder:text-gray-400 font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={applyRewardCode}
+                          disabled={isValidatingReward || !rewardCode.trim()}
+                          className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                            isValidatingReward || !rewardCode.trim()
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-black text-white hover:bg-gray-800"
+                          }`}
+                        >
+                          {isValidatingReward ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            "Apply"
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Price Summary */}
                   <div className="border-t border-gray-100 pt-4 space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">
@@ -467,6 +763,16 @@ export default function CheckoutPage() {
                         {formatPrice(totalPrice)}
                       </span>
                     </div>
+                    {appliedReward && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600">
+                          Discount ({appliedReward.discountPercent}%)
+                        </span>
+                        <span className="font-mono text-green-600">
+                          -{formatPrice(discountAmount)}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Shipping</span>
                       <span className="font-mono text-black">
@@ -500,13 +806,12 @@ export default function CheckoutPage() {
                     <button
                       type="submit"
                       form="checkout-form"
-                      onClick={handleSubmit}
-                      disabled={isProcessing}
+                      disabled={isProcessing || isUploading}
                       className={`
                         w-full py-4 px-6 rounded-full font-medium text-base transition-all
                         flex items-center justify-center gap-3
                         ${
-                          isProcessing
+                          isProcessing || isUploading
                             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                             : "bg-black text-white hover:bg-gray-800"
                         }

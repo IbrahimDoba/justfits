@@ -1,32 +1,39 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Navbar } from '@/components/layout/Navbar'
-import { Footer } from '@/components/layout/Footer'
-import { Input } from '@/components/ui/Input'
-import { useToast } from '@/components/ui/Toast'
-import { User, Mail, Phone, MapPin, Edit2, Save, X } from 'lucide-react'
+import { useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
+import { Input } from "@/components/ui/Input";
+import { useToast } from "@/components/ui/Toast";
+import { LoyaltyCard } from "@/components/ui/LoyaltyCard";
+import { User, Mail, Phone, MapPin, Edit2, Save, X } from "lucide-react";
+import { useUserStats } from "@/lib/hooks/useUserStats";
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
-  const { showToast } = useToast()
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { showToast } = useToast();
 
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: session?.user?.name || '',
-    email: session?.user?.email || '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-  })
+    name: session?.user?.name || "",
+    email: session?.user?.email || "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+  });
+
+  // Use query hook for user stats
+  const { data: stats = { orders: 0, wishlist: 0, reviews: 0 } } = useUserStats(
+    session?.user?.id
+  );
 
   // Redirect if not authenticated
-  if (status === 'loading') {
+  if (status === "loading") {
     return (
       <main className="min-h-screen bg-gray-50">
         <Navbar />
@@ -43,36 +50,36 @@ export default function ProfilePage() {
         </section>
         <Footer />
       </main>
-    )
+    );
   }
 
-  if (status === 'unauthenticated') {
-    router.push('/auth/login?callbackUrl=/profile')
-    return null
+  if (status === "unauthenticated") {
+    router.push("/auth/login?callbackUrl=/profile");
+    return null;
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSave = () => {
     // TODO: Save to database when connected
-    showToast('Profile updated successfully!', 'success')
-    setIsEditing(false)
-  }
+    showToast("Profile updated successfully!", "success");
+    setIsEditing(false);
+  };
 
   const handleCancel = () => {
     setFormData({
-      name: session?.user?.name || '',
-      email: session?.user?.email || '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-    })
-    setIsEditing(false)
-  }
+      name: session?.user?.name || "",
+      email: session?.user?.email || "",
+      phone: "",
+      address: "",
+      city: "",
+      state: "",
+    });
+    setIsEditing(false);
+  };
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -92,9 +99,7 @@ export default function ProfilePage() {
                 <h1 className="font-display text-4xl text-black mb-2">
                   MY PROFILE
                 </h1>
-                <p className="text-gray-600">
-                  Manage your account information
-                </p>
+                <p className="text-gray-600">Manage your account information</p>
               </div>
               {!isEditing ? (
                 <button
@@ -130,21 +135,25 @@ export default function ProfilePage() {
                 {session?.user?.image ? (
                   <img
                     src={session.user.image}
-                    alt={session.user.name || 'User'}
+                    alt={session.user.name || "User"}
                     className="w-24 h-24 rounded-full object-cover"
                   />
                 ) : (
                   <div className="w-24 h-24 rounded-full bg-black text-white flex items-center justify-center text-3xl font-medium">
-                    {session?.user?.name?.charAt(0).toUpperCase() || 'U'}
+                    {session?.user?.name?.charAt(0).toUpperCase() || "U"}
                   </div>
                 )}
                 <div>
                   <h2 className="text-2xl font-semibold text-black">
-                    {session?.user?.name || 'User'}
+                    {session?.user?.name || "User"}
                   </h2>
                   <p className="text-gray-500">{session?.user?.email}</p>
                   <p className="text-sm text-gray-400 mt-1">
-                    Member since {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    Member since{" "}
+                    {new Date().toLocaleDateString("en-US", {
+                      month: "long",
+                      year: "numeric",
+                    })}
                   </p>
                 </div>
               </div>
@@ -152,19 +161,30 @@ export default function ProfilePage() {
               {/* Stats */}
               <div className="grid grid-cols-3 gap-4 pt-6 border-t border-gray-100">
                 <div className="text-center">
-                  <p className="text-2xl font-semibold text-black">0</p>
+                  <p className="text-2xl font-semibold text-black">
+                    {stats.orders}
+                  </p>
                   <p className="text-sm text-gray-500">Orders</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-semibold text-black">0</p>
+                  <p className="text-2xl font-semibold text-black">
+                    {stats.wishlist}
+                  </p>
                   <p className="text-sm text-gray-500">Wishlist</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-semibold text-black">0</p>
+                  <p className="text-2xl font-semibold text-black">
+                    {stats.reviews}
+                  </p>
                   <p className="text-sm text-gray-500">Reviews</p>
                 </div>
               </div>
             </div>
+
+            {/* Loyalty Card */}
+            {/* <div className="mb-6">
+              <LoyaltyCard />
+            </div> */}
 
             {/* Personal Information */}
             <div className="bg-white rounded-2xl p-8 shadow-sm mb-6">
@@ -267,5 +287,5 @@ export default function ProfilePage() {
 
       <Footer />
     </main>
-  )
+  );
 }
