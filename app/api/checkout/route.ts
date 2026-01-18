@@ -232,52 +232,56 @@ export async function POST(request: Request) {
       },
     });
 
-    // Send order confirmation email (don't await to not block response)
-    sendOrderConfirmationEmail({
-      orderNumber: order.orderNumber,
-      customerName: `${firstName} ${lastName}`,
-      customerEmail: email,
-      items: (items as CartItem[]).map((item) => ({
-        name: item.productName,
-        size: item.size,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      subtotal,
-      shippingCost,
-      discount: discount || undefined,
-      total,
-      shippingAddress: {
-        street: address,
-        city,
-        state,
-        postalCode,
-      },
-    }).catch((err) => console.error("Failed to send confirmation email:", err));
+    // Only send emails for bank transfers (manual payment)
+    // For Paystack payments, emails are sent via webhook after successful payment
+    if (paymentMethod === "BANK_TRANSFER") {
+      // Send order confirmation email (don't await to not block response)
+      sendOrderConfirmationEmail({
+        orderNumber: order.orderNumber,
+        customerName: `${firstName} ${lastName}`,
+        customerEmail: email,
+        items: (items as CartItem[]).map((item) => ({
+          name: item.productName,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        subtotal,
+        shippingCost,
+        discount: discount || undefined,
+        total,
+        shippingAddress: {
+          street: address,
+          city,
+          state,
+          postalCode,
+        },
+      }).catch((err) => console.error("Failed to send confirmation email:", err));
 
-    // Send admin notification email (don't await to not block response)
-    sendAdminOrderNotification({
-      orderNumber: order.orderNumber,
-      customerName: `${firstName} ${lastName}`,
-      customerEmail: email,
-      customerPhone: phone,
-      items: (items as CartItem[]).map((item) => ({
-        name: item.productName,
-        size: item.size,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      subtotal,
-      shippingCost,
-      discount: discount || undefined,
-      total,
-      shippingAddress: {
-        street: address,
-        city,
-        state,
-        postalCode,
-      },
-    }).catch((err) => console.error("Failed to send admin notification:", err));
+      // Send admin notification email (don't await to not block response)
+      sendAdminOrderNotification({
+        orderNumber: order.orderNumber,
+        customerName: `${firstName} ${lastName}`,
+        customerEmail: email,
+        customerPhone: phone,
+        items: (items as CartItem[]).map((item) => ({
+          name: item.productName,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        subtotal,
+        shippingCost,
+        discount: discount || undefined,
+        total,
+        shippingAddress: {
+          street: address,
+          city,
+          state,
+          postalCode,
+        },
+      }).catch((err) => console.error("Failed to send admin notification:", err));
+    }
 
     return NextResponse.json({
       success: true,
