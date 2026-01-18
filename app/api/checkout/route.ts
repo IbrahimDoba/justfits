@@ -52,6 +52,8 @@ export async function POST(request: Request) {
       total,
       rewardCode,
       discount,
+      paymentMethod,
+      transactionRef,
     } = body;
 
     // Validate required fields
@@ -209,8 +211,9 @@ export async function POST(request: Request) {
             amount: total,
             currency: "NGN",
             status: "PENDING",
-            method: "BANK_TRANSFER",
+            method: paymentMethod || "BANK_TRANSFER",
             receiptUrl: body.receiptUrl || null,
+            transactionId: transactionRef || null,
           },
         },
       },

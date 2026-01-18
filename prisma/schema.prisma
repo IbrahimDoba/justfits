@@ -343,6 +343,7 @@ model Payment {
   transactionId  String? @unique
   paymentGateway String? // Paystack, Flutterwave, etc.
   receiptUrl     String? // For bank transfers
+  metadata       Json?   // Additional payment data
 
   paidAt DateTime?
 
