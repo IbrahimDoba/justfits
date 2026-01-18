@@ -6,6 +6,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 export async function GET() {
+  // Allow public access to store settings for checkout (bank details, shipping fees)
+  /*
   const session = await auth();
   if (
     !session?.user ||
@@ -13,6 +15,7 @@ export async function GET() {
   ) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
+  */
 
   try {
     // Fix for stale global prisma instance in dev

@@ -48,6 +48,8 @@ import { defaultMetadata } from "@/config/siteConfig";
 
 export const metadata: Metadata = defaultMetadata;
 
+import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -64,6 +66,7 @@ export default function RootLayout({
             <ToastProvider>
               <WishlistProvider>
                 <CartProvider>
+                  <AnnouncementBar />
                   {children}
                   <CartDrawer />
                 </CartProvider>

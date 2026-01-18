@@ -1,9 +1,10 @@
-import { Navbar } from '@/components/layout/Navbar'
-import { Hero } from '@/components/layout/Hero'
-import { Marquee } from '@/components/layout/Marquee'
-import { ProductShowcase } from '@/components/layout/ProductShowcase'
-import { WhyJustFits } from '@/components/layout/WhyJustFits'
-import { Footer } from '@/components/layout/Footer'
+import { Navbar } from "@/components/layout/Navbar";
+import { Hero } from "@/components/layout/Hero";
+import { Marquee } from "@/components/layout/Marquee";
+import { ProductShowcase } from "@/components/layout/ProductShowcase";
+import { WhyJustFits } from "@/components/layout/WhyJustFits";
+import { FAQ } from "@/components/layout/FAQ";
+import { Footer } from "@/components/layout/Footer";
 
 export default function Home() {
   return (
@@ -13,7 +14,8 @@ export default function Home() {
       <Marquee />
       <ProductShowcase />
       <WhyJustFits />
+      <FAQ />
       <Footer />
     </main>
-  )
+  );
 }
