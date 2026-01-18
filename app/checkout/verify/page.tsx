@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 
-export default function VerifyPaymentPage() {
+function VerifyPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reference = searchParams.get("reference");
@@ -121,5 +121,32 @@ export default function VerifyPaymentPage() {
 
       <Footer />
     </main>
+  );
+}
+
+export default function VerifyPaymentPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-gray-50">
+          <Navbar />
+          <section className="pt-32 pb-20">
+            <div className="container mx-auto px-6">
+              <div className="max-w-md mx-auto">
+                <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
+                  <Loader2 className="w-16 h-16 text-black mx-auto mb-4 animate-spin" />
+                  <h1 className="font-display text-2xl text-black mb-2">
+                    Loading...
+                  </h1>
+                </div>
+              </div>
+            </div>
+          </section>
+          <Footer />
+        </main>
+      }
+    >
+      <VerifyPaymentContent />
+    </Suspense>
   );
 }

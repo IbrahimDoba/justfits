@@ -96,9 +96,10 @@ async function handleSuccessfulPayment(data: any) {
 
     // Verify amount matches
     const amountInNaira = amount / 100;
-    if (Math.abs(amountInNaira - payment.amount) > 0.01) {
+    const paymentAmount = Number(payment.amount);
+    if (Math.abs(amountInNaira - paymentAmount) > 0.01) {
       console.error(
-        `Amount mismatch: expected ${payment.amount}, got ${amountInNaira}`
+        `Amount mismatch: expected ${paymentAmount}, got ${amountInNaira}`
       );
       return;
     }
@@ -138,11 +139,11 @@ async function handleSuccessfulPayment(data: any) {
           name: item.variant.product.name,
           size: item.variant.size || "One Size",
           quantity: item.quantity,
-          price: item.price,
+          price: Number(item.price),
         })),
-        subtotal: order.subtotal,
-        shippingCost: order.shippingCost,
-        total: order.total,
+        subtotal: Number(order.subtotal),
+        shippingCost: Number(order.shippingCost),
+        total: Number(order.total),
         shippingAddress: {
           street: address.street,
           city: address.city,

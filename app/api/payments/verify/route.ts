@@ -73,7 +73,8 @@ export async function GET(request: Request) {
 
     // Verify amount matches
     const amountInNaira = transaction.amount / 100;
-    if (Math.abs(amountInNaira - payment.amount) > 0.01) {
+    const paymentAmount = Number(payment.amount);
+    if (Math.abs(amountInNaira - paymentAmount) > 0.01) {
       return NextResponse.json(
         { error: "Payment amount mismatch" },
         { status: 400 }
