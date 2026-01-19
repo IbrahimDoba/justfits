@@ -35,28 +35,28 @@ const viewOptions = [
 
 const referenceImages = [
   {
-    id: "dark-female",
-    label: "Dark Female",
-    path: "/images/dark female.jpg",
-    preview: "/images/dark female.jpg",
+    id: "model1",
+    label: "Model 1",
+    path: "/images/model1.png",
+    preview: "/images/model1.png",
   },
   {
-    id: "dark-male",
-    label: "Dark Male",
-    path: "/images/dark male.jpg",
-    preview: "/images/dark male.jpg",
+    id: "model2",
+    label: "Model 2",
+    path: "/images/model2.jpg",
+    preview: "/images/model2.jpg",
   },
   {
-    id: "white-female",
-    label: "White Female",
-    path: "/images/white female.jpg",
-    preview: "/images/white female.jpg",
+    id: "model3",
+    label: "Model 3",
+    path: "/images/model3.jpg",
+    preview: "/images/model3.jpg",
   },
   {
-    id: "white-male",
-    label: "White Male",
-    path: "/images/white male.jpg",
-    preview: "/images/white male.jpg",
+    id: "model4",
+    label: "Model 4",
+    path: "/images/model4.webp",
+    preview: "/images/model4.webp",
   },
 ];
 
@@ -82,7 +82,7 @@ export default function AiImageGeneratorModal({
   // Generation Options
   const [selectedView, setSelectedView] = useState("front");
   const [selectedReferenceImage, setSelectedReferenceImage] =
-    useState("dark-female");
+    useState("model1");
   const [selectedBackground, setSelectedBackground] = useState("studio-white");
   const [selectedEngine, setSelectedEngine] = useState("openai");
   const [selectedModel, setSelectedModel] = useState("gpt-4.1");
@@ -111,7 +111,7 @@ export default function AiImageGeneratorModal({
           sourceImageUrl: selectedSourceImage,
           referenceImagePath:
             referenceImages.find((r) => r.id === selectedReferenceImage)
-              ?.path || "/images/dark female.jpg",
+              ?.path || "/images/model1.png",
           productName,
           view:
             viewOptions.find((v) => v.id === selectedView)?.label ||

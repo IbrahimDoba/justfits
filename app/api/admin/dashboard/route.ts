@@ -10,6 +10,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get period from query params (default: monthly)
+    const { searchParams } = new URL(request.url);
+    const period = searchParams.get("period") || "monthly";
+
     // Get counts and statistics
     const [
       totalOrders,
@@ -47,37 +51,128 @@ export async function GET(request: NextRequest) {
     });
     const totalRevenue = revenueResult._sum.total || 0;
 
-    // Aggregated Revenue for Chart (Last 6 Months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    // Aggregated Revenue for Chart based on period
+    let startDate = new Date();
+    let revenueChart: Array<{ name: string; value: number }> = [];
 
-    const chartOrders = await prisma.order.findMany({
-      where: {
-        status: "DELIVERED",
-        createdAt: { gte: sixMonthsAgo },
-      },
-      select: {
-        createdAt: true,
-        total: true,
-      },
-      orderBy: { createdAt: "asc" },
-    });
+    if (period === "daily") {
+      // Last 7 days
+      startDate.setDate(startDate.getDate() - 7);
 
-    // Group by month
-    const monthlyRevenue = chartOrders.reduce((acc, order) => {
-      const month = order.createdAt.toLocaleString("default", {
-        month: "short",
+      const chartOrders = await prisma.order.findMany({
+        where: {
+          status: "DELIVERED",
+          createdAt: { gte: startDate },
+        },
+        select: {
+          createdAt: true,
+          total: true,
+        },
+        orderBy: { createdAt: "asc" },
       });
-      acc[month] = (acc[month] || 0) + Number(order.total);
-      return acc;
-    }, {} as Record<string, number>);
 
-    const revenueChart = Object.entries(monthlyRevenue).map(
-      ([name, value]) => ({
+      // Group by day
+      const dailyRevenue = chartOrders.reduce((acc, order) => {
+        const day = order.createdAt.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+        acc[day] = (acc[day] || 0) + Number(order.total);
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Fill in missing days
+      const allDays: Record<string, number> = {};
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dayKey = date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+        allDays[dayKey] = dailyRevenue[dayKey] || 0;
+      }
+
+      revenueChart = Object.entries(allDays).map(([name, value]) => ({
         name,
         value,
-      })
-    );
+      }));
+    } else if (period === "weekly") {
+      // Last 8 weeks
+      startDate.setDate(startDate.getDate() - 56); // 8 weeks
+
+      const chartOrders = await prisma.order.findMany({
+        where: {
+          status: "DELIVERED",
+          createdAt: { gte: startDate },
+        },
+        select: {
+          createdAt: true,
+          total: true,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      // Group by week
+      const weeklyRevenue: Record<string, number> = {};
+      chartOrders.forEach((order) => {
+        const weekStart = new Date(order.createdAt);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of week (Sunday)
+        const weekKey = weekStart.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+        weeklyRevenue[weekKey] = (weeklyRevenue[weekKey] || 0) + Number(order.total);
+      });
+
+      // Fill in missing weeks
+      const allWeeks: Record<string, number> = {};
+      for (let i = 7; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - (i * 7) - date.getDay());
+        const weekKey = date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+        allWeeks[weekKey] = weeklyRevenue[weekKey] || 0;
+      }
+
+      revenueChart = Object.entries(allWeeks).map(([name, value]) => ({
+        name,
+        value,
+      }));
+    } else {
+      // Monthly (default) - Last 6 months
+      startDate.setMonth(startDate.getMonth() - 6);
+
+      const chartOrders = await prisma.order.findMany({
+        where: {
+          status: "DELIVERED",
+          createdAt: { gte: startDate },
+        },
+        select: {
+          createdAt: true,
+          total: true,
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      // Group by month
+      const monthlyRevenue = chartOrders.reduce((acc, order) => {
+        const month = order.createdAt.toLocaleString("default", {
+          month: "short",
+        });
+        acc[month] = (acc[month] || 0) + Number(order.total);
+        return acc;
+      }, {} as Record<string, number>);
+
+      revenueChart = Object.entries(monthlyRevenue).map(
+        ([name, value]) => ({
+          name,
+          value,
+        })
+      );
+    }
 
     // Get low stock products
     const lowStockItems = await prisma.productVariant.findMany({

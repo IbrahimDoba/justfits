@@ -113,17 +113,45 @@ export async function POST(request: NextRequest) {
       images,
     } = body;
 
-    // Process variants and auto-generate SKUs if not provided
-    const processedVariants = variants.map(
-      (v: { size: string; color: string; sku: string; price: number; stock: number }, index: number) => ({
-        name: `${name} - ${v.color} ${v.size}`,
-        size: v.size,
-        color: v.color,
-        sku: v.sku?.trim() || generateSKU(name, v, index),
-        price: v.price || basePrice,
-        stockQuantity: v.stock || 0,
-        isAvailable: true,
-      })
+    // Process variants and auto-generate unique SKUs if not provided
+    const processedVariants = await Promise.all(
+      variants.map(
+        async (v: { size: string; color: string; sku: string; price: number; stock: number }, index: number) => {
+          let skuToUse = v.sku?.trim();
+
+          if (!skuToUse) {
+            // Generate SKU if not provided
+            skuToUse = generateSKU(name, v, index);
+          }
+
+          // Check if SKU already exists and generate unique one if needed
+          let existingSkuVariant = await prisma.productVariant.findUnique({
+            where: { sku: skuToUse },
+          });
+
+          if (existingSkuVariant) {
+            // Keep generating until we get a unique one
+            let attempts = 0;
+            while (existingSkuVariant && attempts < 10) {
+              skuToUse = generateSKU(name, v, index + attempts + Date.now());
+              existingSkuVariant = await prisma.productVariant.findUnique({
+                where: { sku: skuToUse },
+              });
+              attempts++;
+            }
+          }
+
+          return {
+            name: `${name} - ${v.color} ${v.size}`,
+            size: v.size,
+            color: v.color,
+            sku: skuToUse,
+            price: v.price || basePrice,
+            stockQuantity: v.stock || 0,
+            isAvailable: true,
+          };
+        }
+      )
     );
 
     // Create product with variants

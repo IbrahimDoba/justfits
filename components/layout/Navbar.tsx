@@ -47,7 +47,7 @@ export function Navbar() {
       variants={navbar}
       initial="hidden"
       animate="visible"
-      className={`sticky top-8 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled ? "bg-white/90 backdrop-blur-md shadow-lg" : "bg-transparent"
       }`}
     >
@@ -215,7 +215,7 @@ export function Navbar() {
         variants={mobileMenu}
         initial="closed"
         animate={mobileMenuOpen ? "open" : "closed"}
-        className="md:hidden fixed inset-0 top-[112px] bg-white/95 backdrop-blur-lg z-40"
+        className="md:hidden fixed inset-0 top-20 bg-white/95 backdrop-blur-lg z-40"
       >
         <div className="container mx-auto px-6 py-12">
           <div className="flex flex-col gap-8">

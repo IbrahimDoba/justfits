@@ -22,7 +22,7 @@ interface ProductVariant {
   stock: number;
 }
 
-const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
+const sizes = ["Adjustable", "XS", "S", "M", "L", "XL", "XXL"];
 
 export default function NewProductPage() {
   const router = useRouter();

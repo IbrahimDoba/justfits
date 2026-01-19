@@ -66,7 +66,7 @@ export default function RootLayout({
             <ToastProvider>
               <WishlistProvider>
                 <CartProvider>
-                  <AnnouncementBar />
+                  {/* <AnnouncementBar /> */}
                   {children}
                   <CartDrawer />
                 </CartProvider>

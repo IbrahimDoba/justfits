@@ -131,6 +131,42 @@ export async function PUT(
       }>) {
         const isExisting = v.id && existingIds.includes(v.id);
 
+        // Determine SKU to use
+        let skuToUse = v.sku?.trim();
+
+        if (!skuToUse) {
+          // Generate SKU if not provided
+          skuToUse = generateSKU(name, v.color, v.size);
+        }
+
+        // Check if SKU already exists (excluding current variant if updating)
+        const existingSkuVariant = await prisma.productVariant.findUnique({
+          where: { sku: skuToUse },
+        });
+
+        if (existingSkuVariant && existingSkuVariant.id !== v.id) {
+          // SKU exists on a different variant - generate a new unique one
+          skuToUse = generateSKU(name, v.color, v.size);
+
+          // Double-check the generated one doesn't exist
+          const generatedSkuExists = await prisma.productVariant.findUnique({
+            where: { sku: skuToUse },
+          });
+
+          if (generatedSkuExists) {
+            // Keep generating until we get a unique one
+            let attempts = 0;
+            while (attempts < 10) {
+              skuToUse = generateSKU(name, v.color, v.size);
+              const checkExists = await prisma.productVariant.findUnique({
+                where: { sku: skuToUse },
+              });
+              if (!checkExists) break;
+              attempts++;
+            }
+          }
+        }
+
         if (isExisting) {
           // Update existing
           await prisma.productVariant.update({
@@ -138,7 +174,7 @@ export async function PUT(
             data: {
               size: v.size,
               color: v.color,
-              sku: v.sku?.trim() || undefined, // Don't overwrite with empty
+              sku: skuToUse,
               price: Number(v.price) || basePrice,
               stockQuantity: Number(v.stock) || 0,
               isAvailable: true,
@@ -152,7 +188,7 @@ export async function PUT(
               name: `${name} - ${v.color} ${v.size}`,
               size: v.size,
               color: v.color,
-              sku: v.sku?.trim() || generateSKU(name, v.color, v.size),
+              sku: skuToUse,
               price: Number(v.price) || basePrice,
               stockQuantity: Number(v.stock) || 0,
               isAvailable: true,

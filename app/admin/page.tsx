@@ -85,26 +85,44 @@ export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<"daily" | "weekly" | "monthly">("monthly");
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
+
+  const fetchData = async (chartPeriod?: string) => {
+    try {
+      if (chartPeriod) {
+        setIsLoadingChart(true);
+      } else {
+        setIsLoading(true);
+      }
+
+      const url = chartPeriod
+        ? `/api/admin/dashboard?period=${chartPeriod}`
+        : "/api/admin/dashboard";
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("Failed to fetch dashboard data");
+      }
+      const jsonData = await response.json();
+      setData(jsonData);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      setError("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
+      setIsLoadingChart(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/admin/dashboard");
-        if (!response.ok) {
-          throw new Error("Failed to fetch dashboard data");
-        }
-        const jsonData = await response.json();
-        setData(jsonData);
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-        setError("Failed to load dashboard data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
+
+  const handlePeriodChange = (newPeriod: "daily" | "weekly" | "monthly") => {
+    setPeriod(newPeriod);
+    fetchData(newPeriod);
+  };
 
   if (isLoading) {
     return (
@@ -200,7 +218,13 @@ export default function AdminDashboard() {
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
           Revenue Overview
         </h2>
-        {data && <RevenueChart data={data.revenueChart} />}
+        {isLoadingChart ? (
+          <div className="h-[300px] flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          </div>
+        ) : (
+          data && <RevenueChart data={data.revenueChart} onPeriodChange={handlePeriodChange} />
+        )}
       </motion.div>
 
       {/* Main Content Grid */}

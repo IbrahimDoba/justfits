@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   AreaChart,
   Area,
@@ -15,9 +16,16 @@ interface RevenueChartProps {
     name: string;
     value: number;
   }>;
+  onPeriodChange?: (period: "daily" | "weekly" | "monthly") => void;
 }
 
-export default function RevenueChart({ data }: RevenueChartProps) {
+export default function RevenueChart({ data, onPeriodChange }: RevenueChartProps) {
+  const [selectedPeriod, setSelectedPeriod] = useState<"daily" | "weekly" | "monthly">("monthly");
+
+  const handlePeriodChange = (period: "daily" | "weekly" | "monthly") => {
+    setSelectedPeriod(period);
+    onPeriodChange?.(period);
+  };
   const formatValue = (value: number) => {
     if (value >= 1000000) return `₦${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `₦${(value / 1000).toFixed(1)}k`;
@@ -43,14 +51,51 @@ export default function RevenueChart({ data }: RevenueChartProps) {
 
   if (!data || data.length === 0) {
     return (
-      <div className="h-[300px] flex items-center justify-center text-gray-400">
-        No revenue data available yet
+      <div className="space-y-4">
+        {/* Period Selector */}
+        <div className="flex items-center gap-2">
+          {(["daily", "weekly", "monthly"] as const).map((period) => (
+            <button
+              key={period}
+              onClick={() => handlePeriodChange(period)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${
+                selectedPeriod === period
+                  ? "bg-black text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {period}
+            </button>
+          ))}
+        </div>
+        <div className="h-[300px] flex items-center justify-center text-gray-400">
+          No revenue data available yet
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-[300px] w-full">
+    <div className="space-y-4">
+      {/* Period Selector */}
+      <div className="flex items-center gap-2">
+        {(["daily", "weekly", "monthly"] as const).map((period) => (
+          <button
+            key={period}
+            onClick={() => handlePeriodChange(period)}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${
+              selectedPeriod === period
+                ? "bg-black text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {period}
+          </button>
+        ))}
+      </div>
+
+      {/* Chart */}
+      <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={data}
@@ -96,6 +141,7 @@ export default function RevenueChart({ data }: RevenueChartProps) {
           />
         </AreaChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }
