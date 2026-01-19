@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/db/prisma";
+import { sendOrderConfirmationEmail, sendAdminOrderNotification } from "@/lib/services/email";
 
 export async function GET(request: Request) {
   try {
@@ -60,7 +61,20 @@ export async function GET(request: Request) {
     const payment = await prisma.payment.findFirst({
       where: { transactionId: reference },
       include: {
-        order: true,
+        order: {
+          include: {
+            items: {
+              include: {
+                variant: {
+                  include: {
+                    product: true,
+                  },
+                },
+              },
+            },
+            shippingAddress: true,
+          },
+        },
       },
     });
 
@@ -82,6 +96,7 @@ export async function GET(request: Request) {
     }
 
     // Update payment if not already completed (webhook may have already done this)
+    let shouldSendEmail = false;
     if (payment.status !== "COMPLETED") {
       await prisma.payment.update({
         where: { id: payment.id },
@@ -103,6 +118,60 @@ export async function GET(request: Request) {
           status: "PROCESSING",
         },
       });
+
+      // Mark that we should send email since this is a new completion
+      shouldSendEmail = true;
+    }
+
+    // Send confirmation emails if this was a new payment completion
+    if (shouldSendEmail && payment.order && payment.order.shippingAddress) {
+      const order = payment.order;
+      const address = order.shippingAddress;
+
+      // Send customer confirmation email
+      sendOrderConfirmationEmail({
+        orderNumber: order.orderNumber,
+        customerName: `${address.firstName} ${address.lastName}`,
+        customerEmail: transaction.customer?.email || address.phone,
+        items: order.items.map((item) => ({
+          name: item.variant.product.name,
+          size: item.variant.size || "One Size",
+          quantity: item.quantity,
+          price: Number(item.price),
+        })),
+        subtotal: Number(order.subtotal),
+        shippingCost: Number(order.shippingCost),
+        total: Number(order.total),
+        shippingAddress: {
+          street: address.street,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode || "",
+        },
+      }).catch((err) => console.error("Failed to send confirmation email:", err));
+
+      // Send admin notification email
+      sendAdminOrderNotification({
+        orderNumber: order.orderNumber,
+        customerName: `${address.firstName} ${address.lastName}`,
+        customerEmail: transaction.customer?.email || address.phone,
+        customerPhone: address.phone,
+        items: order.items.map((item) => ({
+          name: item.variant.product.name,
+          size: item.variant.size || "One Size",
+          quantity: item.quantity,
+          price: Number(item.price),
+        })),
+        subtotal: Number(order.subtotal),
+        shippingCost: Number(order.shippingCost),
+        total: Number(order.total),
+        shippingAddress: {
+          street: address.street,
+          city: address.city,
+          state: address.state,
+          postalCode: address.postalCode || "",
+        },
+      }).catch((err) => console.error("Failed to send admin notification:", err));
     }
 
     return NextResponse.json({
