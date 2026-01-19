@@ -1,8 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Instagram, Twitter } from "lucide-react";
+import { Instagram, Twitter, Check, X } from "lucide-react";
 
 const footerLinks = {
   shop: [
@@ -25,8 +26,96 @@ const socialLinks = [
 ];
 
 export function Footer() {
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/newsletter/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Failed to subscribe. Please try again.");
+        return;
+      }
+
+      // Success
+      setShowSuccess(true);
+      setEmail("");
+
+      // Auto-hide success modal after 5 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 5000);
+    } catch (err) {
+      console.error("Newsletter subscription error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <footer className="bg-white border-t border-black/10">
+      {/* Success Modal */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowSuccess(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center relative"
+            >
+              <button
+                onClick={() => setShowSuccess(false)}
+                className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check size={32} className="text-green-600" />
+              </div>
+
+              <h3 className="font-script text-2xl md:text-3xl italic text-black mb-2">
+                Welcome to the Drive!
+              </h3>
+
+              <p className="text-sm text-gray-600 mb-6">
+                You've successfully subscribed to our newsletter. Get ready for exclusive drops and early access!
+              </p>
+
+              <button
+                onClick={() => setShowSuccess(false)}
+                className="w-full px-6 py-3 bg-black text-white font-medium rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Got it!
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Newsletter Section */}
       <div className="container px-6 py-16 md:py-20">
         <div className="flex flex-col items-center text-center max-w-2xl mx-auto gap-8">
@@ -39,21 +128,37 @@ export function Footer() {
           </p>
 
           {/* Newsletter Form */}
-          <form className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-lg">
+          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-lg">
             <input
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              className="w-full sm:flex-1 px-5 py-3 bg-black/5 border border-black/10 text-black placeholder:text-black/30 text-sm font-body focus:outline-none focus:border-black/30 transition-colors text-center"
+              required
+              disabled={isSubmitting}
+              className="w-full sm:flex-1 px-5 py-3 bg-black/5 border border-black/10 text-black placeholder:text-black/30 text-sm font-body focus:outline-none focus:border-black/30 transition-colors text-center disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+              whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
               type="submit"
-              className="relative z-10 w-full sm:w-auto px-8 py-3.5 bg-black text-white text-sm font-body font-medium uppercase tracking-wider hover:bg-black/90 transition-colors whitespace-nowrap"
+              disabled={isSubmitting}
+              className="relative z-10 w-full sm:w-auto px-8 py-3.5 bg-black text-white text-sm font-body font-medium uppercase tracking-wider hover:bg-black/90 transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Subscribe
+              {isSubmitting ? "Subscribing..." : "Subscribe"}
             </motion.button>
           </form>
+
+          {/* Error Message */}
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-sm text-red-600 font-medium"
+            >
+              {error}
+            </motion.p>
+          )}
         </div>
       </div>
 
