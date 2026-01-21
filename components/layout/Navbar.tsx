@@ -37,6 +37,20 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
   const handleSignOut = () => {
     signOut({ callbackUrl: "/" });
     setUserMenuOpen(false);
@@ -211,98 +225,101 @@ export function Navbar() {
       </div>
 
       {/* Mobile Menu */}
-      <motion.div
-        variants={mobileMenu}
-        initial="closed"
-        animate={mobileMenuOpen ? "open" : "closed"}
-        className="md:hidden fixed inset-0 top-20 bg-white/95 backdrop-blur-lg z-40"
-      >
-        <div className="container mx-auto px-6 py-12">
-          <div className="flex flex-col gap-8">
-            {navLinks.map((link) => (
-              <motion.div key={link.href} variants={mobileMenuItem}>
+      {mobileMenuOpen && (
+        <motion.div
+          variants={mobileMenu}
+          initial="closed"
+          animate="open"
+          exit="closed"
+          className="md:hidden absolute left-0 right-0 top-full w-full h-[calc(100vh_-_5rem)] bg-white/95 backdrop-blur-lg z-[60] overflow-y-auto"
+        >
+          <div className="container mx-auto px-6 py-12">
+            <div className="flex flex-col gap-8">
+              {navLinks.map((link) => (
+                <motion.div key={link.href} variants={mobileMenuItem}>
+                  <Link
+                    href={link.href}
+                    className="text-3xl font-script italic text-black/90 hover:text-black transition-colors block"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                </motion.div>
+              ))}
+
+              <motion.div
+                variants={mobileMenuItem}
+                className="pt-8 border-t border-black/10 space-y-6"
+              >
+                {/* Cart */}
+                <button
+                  className="flex items-center gap-3 text-black/70 hover:text-black transition-colors"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    toggleCart();
+                  }}
+                >
+                  <ShoppingBag size={24} strokeWidth={1.5} />
+                  <span className="text-lg font-body">Cart ({totalItems})</span>
+                </button>
+
+                {/* Wishlist */}
                 <Link
-                  href={link.href}
-                  className="text-3xl font-script italic text-black/90 hover:text-black transition-colors block"
+                  href="/wishlist"
+                  className="flex items-center gap-3 text-black/70 hover:text-black transition-colors"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  {link.label}
+                  <Heart size={24} strokeWidth={1.5} />
+                  <span className="text-lg font-body">Wishlist</span>
                 </Link>
+
+                {/* Auth Links */}
+                {status === "loading" ? (
+                  <div className="w-full h-12 bg-gray-200 animate-pulse rounded-lg" />
+                ) : session ? (
+                  <>
+                    <Link
+                      href="/profile"
+                      className="flex items-center gap-3 text-black/70 hover:text-black transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <User size={24} strokeWidth={1.5} />
+                      <span className="text-lg font-body">My Profile</span>
+                    </Link>
+                    <Link
+                      href="/orders"
+                      className="flex items-center gap-3 text-black/70 hover:text-black transition-colors"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Package size={24} strokeWidth={1.5} />
+                      <span className="text-lg font-body">My Orders</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleSignOut();
+                      }}
+                      className="flex items-center gap-3 text-red-600 hover:text-red-700 transition-colors"
+                    >
+                      <LogOut size={24} strokeWidth={1.5} />
+                      <span className="text-lg font-body">Sign Out</span>
+                    </button>
+                  </>
+                ) : (
+                  <Link
+                    href="/auth/login"
+                    className="flex items-center justify-center gap-2 py-3 px-6 bg-black text-white rounded-full font-medium hover:bg-gray-800 transition-colors"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <User size={20} />
+                    Sign In
+                  </Link>
+                )}
               </motion.div>
-            ))}
-
-            <motion.div
-              variants={mobileMenuItem}
-              className="pt-8 border-t border-black/10 space-y-6"
-            >
-              {/* Cart */}
-              <button
-                className="flex items-center gap-3 text-black/70 hover:text-black transition-colors"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  toggleCart();
-                }}
-              >
-                <ShoppingBag size={24} strokeWidth={1.5} />
-                <span className="text-lg font-body">Cart ({totalItems})</span>
-              </button>
-
-              {/* Wishlist */}
-              <Link
-                href="/wishlist"
-                className="flex items-center gap-3 text-black/70 hover:text-black transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Heart size={24} strokeWidth={1.5} />
-                <span className="text-lg font-body">Wishlist</span>
-              </Link>
-
-              {/* Auth Links */}
-              {status === "loading" ? (
-                <div className="w-full h-12 bg-gray-200 animate-pulse rounded-lg" />
-              ) : session ? (
-                <>
-                  <Link
-                    href="/profile"
-                    className="flex items-center gap-3 text-black/70 hover:text-black transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <User size={24} strokeWidth={1.5} />
-                    <span className="text-lg font-body">My Profile</span>
-                  </Link>
-                  <Link
-                    href="/orders"
-                    className="flex items-center gap-3 text-black/70 hover:text-black transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Package size={24} strokeWidth={1.5} />
-                    <span className="text-lg font-body">My Orders</span>
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handleSignOut();
-                    }}
-                    className="flex items-center gap-3 text-red-600 hover:text-red-700 transition-colors"
-                  >
-                    <LogOut size={24} strokeWidth={1.5} />
-                    <span className="text-lg font-body">Sign Out</span>
-                  </button>
-                </>
-              ) : (
-                <Link
-                  href="/auth/login"
-                  className="flex items-center justify-center gap-2 py-3 px-6 bg-black text-white rounded-full font-medium hover:bg-gray-800 transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <User size={20} />
-                  Sign In
-                </Link>
-              )}
-            </motion.div>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </motion.nav>
   );
 }

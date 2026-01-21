@@ -217,7 +217,7 @@ export function ProductDetailClient({
       <Navbar />
 
       {/* Breadcrumb */}
-      <div className="pt-24 pb-4 bg-gray-50">
+      <div className="pt-8 pb-4 bg-gray-50">
         <div className="container mx-auto px-6">
           <Link
             href="/shop"
@@ -230,7 +230,7 @@ export function ProductDetailClient({
       </div>
 
       {/* Product Section */}
-      <section className="py-12 bg-gray-50">
+      <section className="py-6 bg-gray-50">
         <div className="container mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16">
             {/* Product Images */}
@@ -364,7 +364,7 @@ export function ProductDetailClient({
                           onClick={() => setSelectedSize(size)}
                           disabled={!isAvailable}
                           className={`
-                            px-6 py-3 rounded-full text-sm font-medium transition-all duration-200
+                            px-4 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-medium transition-all duration-200
                             ${
                               selectedSize === size
                                 ? "bg-black text-white"
@@ -428,7 +428,7 @@ export function ProductDetailClient({
                   onClick={handleAddToCart}
                   disabled={isOutOfStock || isAdding}
                   className={`
-                    flex-1 flex items-center justify-center gap-3 py-4 px-8 rounded-full font-medium text-base transition-all
+                    flex-1 flex items-center justify-center gap-2 sm:gap-3 py-3 sm:py-4 px-4 sm:px-8 rounded-full font-medium text-sm sm:text-base transition-all
                     ${
                       isOutOfStock
                         ? "bg-gray-200 text-gray-500 cursor-not-allowed"
@@ -449,19 +449,19 @@ export function ProductDetailClient({
                         }}
                         className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                       />
-                      Adding...
+                      <span className="hidden xs:inline">Adding...</span>
                     </>
                   ) : justAdded ? (
                     <>
                       <Check size={20} />
-                      Added to Cart
+                      <span className="hidden xs:inline">Added to Cart</span>
                     </>
                   ) : isOutOfStock ? (
                     "Out of Stock"
                   ) : (
                     <>
                       <ShoppingBag size={20} />
-                      Add to Cart
+                      <span className="hidden xs:inline">Add to Cart</span>
                     </>
                   )}
                 </motion.button>
@@ -470,7 +470,7 @@ export function ProductDetailClient({
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleToggleWishlist}
-                  className={`flex items-center justify-center gap-2 px-6 py-4 rounded-full border-2 font-medium transition-all duration-200 ${
+                  className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-4 rounded-full border-2 font-medium transition-all duration-200 ${
                     isWishlisted
                       ? "border-red-500 bg-red-500 text-white"
                       : "border-gray-300 bg-white text-gray-700 hover:border-red-500 hover:text-red-500"

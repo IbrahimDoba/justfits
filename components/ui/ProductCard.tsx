@@ -34,7 +34,7 @@ export function ProductCard({
         bg-white rounded-3xl overflow-hidden shadow-lg group
         ${
           layout === "carousel"
-            ? "flex-shrink-0 w-[280px] md:w-[320px]"
+            ? "flex-shrink-0 w-[240px] sm:w-[280px] md:w-[320px]"
             : "w-full"
         }
       `}

@@ -4,7 +4,7 @@
  * All animations respect prefers-reduced-motion
  */
 
-import { Variants } from 'framer-motion'
+import { Variants } from "framer-motion";
 
 // ============================================
 // FADE ANIMATIONS
@@ -25,7 +25,7 @@ export const fadeIn: Variants = {
       duration: 0.3,
     },
   },
-}
+};
 
 export const fadeInUp: Variants = {
   hidden: {
@@ -47,7 +47,7 @@ export const fadeInUp: Variants = {
       duration: 0.3,
     },
   },
-}
+};
 
 export const fadeInDown: Variants = {
   hidden: {
@@ -62,7 +62,7 @@ export const fadeInDown: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 export const fadeInLeft: Variants = {
   hidden: {
@@ -77,7 +77,7 @@ export const fadeInLeft: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 export const fadeInRight: Variants = {
   hidden: {
@@ -92,7 +92,7 @@ export const fadeInRight: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // ============================================
 // SCALE ANIMATIONS
@@ -118,7 +118,7 @@ export const scaleIn: Variants = {
       duration: 0.3,
     },
   },
-}
+};
 
 export const scaleUp: Variants = {
   hidden: {
@@ -131,7 +131,7 @@ export const scaleUp: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // ============================================
 // STAGGER ANIMATIONS
@@ -146,7 +146,7 @@ export const staggerContainer: Variants = {
       delayChildren: 0.2,
     },
   },
-}
+};
 
 export const staggerItem: Variants = {
   hidden: {
@@ -161,7 +161,7 @@ export const staggerItem: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // Fast stagger for text reveals
 export const staggerTextContainer: Variants = {
@@ -173,7 +173,7 @@ export const staggerTextContainer: Variants = {
       delayChildren: 0.05,
     },
   },
-}
+};
 
 export const staggerTextItem: Variants = {
   hidden: {
@@ -188,7 +188,7 @@ export const staggerTextItem: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // ============================================
 // PRODUCT CARD ANIMATIONS
@@ -217,7 +217,7 @@ export const productCard: Variants = {
   tap: {
     scale: 0.98,
   },
-}
+};
 
 export const productImage: Variants = {
   initial: {
@@ -230,7 +230,7 @@ export const productImage: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // ============================================
 // BUTTON ANIMATIONS
@@ -250,7 +250,7 @@ export const button: Variants = {
   tap: {
     scale: 0.98,
   },
-}
+};
 
 export const buttonIcon: Variants = {
   initial: {
@@ -263,7 +263,7 @@ export const buttonIcon: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // ============================================
 // PAGE TRANSITIONS
@@ -292,7 +292,7 @@ export const pageTransition: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // ============================================
 // NAVBAR ANIMATIONS
@@ -311,24 +311,26 @@ export const navbar: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 export const mobileMenu: Variants = {
   closed: {
     opacity: 0,
-    x: "100%",
+    transition: {
+      duration: 0.2,
+      ease: [0.4, 0, 0.2, 1],
+    },
   },
   open: {
     opacity: 1,
-    x: 0,
     transition: {
-      duration: 0.4,
+      duration: 0.3,
       ease: [0.4, 0, 0.2, 1],
       staggerChildren: 0.05,
       delayChildren: 0.1,
     },
   },
-}
+};
 
 export const mobileMenuItem: Variants = {
   closed: {
@@ -343,7 +345,7 @@ export const mobileMenuItem: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // ============================================
 // MODAL & OVERLAY ANIMATIONS
@@ -365,7 +367,7 @@ export const modalBackdrop: Variants = {
       duration: 0.2,
     },
   },
-}
+};
 
 export const modal: Variants = {
   hidden: {
@@ -390,7 +392,7 @@ export const modal: Variants = {
       duration: 0.2,
     },
   },
-}
+};
 
 // ============================================
 // CART ANIMATIONS
@@ -407,7 +409,7 @@ export const cartDrawer: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 export const cartItem: Variants = {
   hidden: {
@@ -431,7 +433,7 @@ export const cartItem: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // ============================================
 // SCROLL-TRIGGERED ANIMATIONS
@@ -450,7 +452,7 @@ export const scrollReveal: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 export const scrollRevealLeft: Variants = {
   hidden: {
@@ -465,7 +467,7 @@ export const scrollRevealLeft: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 export const scrollRevealRight: Variants = {
   hidden: {
@@ -480,7 +482,7 @@ export const scrollRevealRight: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 // ============================================
 // HOVER EFFECTS
@@ -489,17 +491,19 @@ export const scrollRevealRight: Variants = {
 export const hoverLift: Variants = {
   initial: {
     y: 0,
-    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+    boxShadow:
+      "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
   },
   hover: {
     y: -4,
-    boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+    boxShadow:
+      "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
     transition: {
       duration: 0.2,
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};
 
 export const hoverScale: Variants = {
   initial: {
@@ -512,4 +516,4 @@ export const hoverScale: Variants = {
       ease: [0.4, 0, 0.2, 1],
     },
   },
-}
+};

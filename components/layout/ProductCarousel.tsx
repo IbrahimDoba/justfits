@@ -64,7 +64,7 @@ export function ProductCarousel() {
         {/* Horizontal Scrolling Products */}
         <ScrollReveal direction="up">
           <div className="relative">
-            <div className="flex gap-6 overflow-x-auto pb-8 scrollbar-hide snap-x snap-mandatory">
+            <div className="flex gap-4 md:gap-6 overflow-x-auto pb-8 pr-6 sm:pr-0 scrollbar-hide snap-x snap-mandatory">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}

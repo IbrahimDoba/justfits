@@ -220,6 +220,7 @@ body {
   font-size: var(--font-size-body);
   line-height: var(--line-height-normal);
   overflow-x: hidden;
+  max-width: 100vw;
 }
 
 /* Smooth Scrolling with Reduced Motion Support */
