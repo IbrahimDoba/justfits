@@ -1,17 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Instagram, Twitter, Check, X } from "lucide-react";
 
 const footerLinks = {
-  shop: [
-    { label: "All Caps", href: "/shop" },
-    { label: "BMW Collection", href: "/shop/bmw" },
-    { label: "Benz Collection", href: "/shop/benz" },
-    { label: "New Arrivals", href: "/shop/new" },
-  ],
   company: [
     { label: "About Us", href: "/about" },
     { label: "Contact", href: "/contact" },
@@ -21,15 +15,45 @@ const footerLinks = {
 };
 
 const socialLinks = [
-  { label: "Instagram", href: "https://instagram.com", icon: Instagram },
-  { label: "Twitter", href: "https://twitter.com", icon: Twitter },
+  {
+    label: "Instagram",
+    href: "https://instagram.com/justfitsng",
+    icon: Instagram,
+  },
+  { label: "Twitter", href: "https://twitter.com/Dobaibrahim", icon: Twitter },
 ];
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  productCount: number;
+}
 
 export function Footer() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [collections, setCollections] = useState<Category[]>([]);
+
+  // Fetch collections for footer
+  useEffect(() => {
+    async function fetchCollections() {
+      try {
+        const response = await fetch("/api/categories");
+        const data = await response.json();
+        // Filter out "All" category and limit to main collections
+        const mainCollections = data.categories
+          .filter((cat: Category) => cat.slug !== "all")
+          .slice(0, 4);
+        setCollections(mainCollections);
+      } catch (error) {
+        console.error("Failed to fetch collections:", error);
+      }
+    }
+    fetchCollections();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +126,8 @@ export function Footer() {
               </h3>
 
               <p className="text-sm text-gray-600 mb-6">
-                You've successfully subscribed to our newsletter. Get ready for exclusive drops and early access!
+                You've successfully subscribed to our newsletter. Get ready for
+                exclusive drops and early access!
               </p>
 
               <button
@@ -128,7 +153,10 @@ export function Footer() {
           </p>
 
           {/* Newsletter Form */}
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-lg">
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-lg"
+          >
             <input
               type="email"
               value={email}
@@ -201,13 +229,21 @@ export function Footer() {
                 Shop
               </h5>
               <ul className="space-y-3">
-                {footerLinks.shop.map((link) => (
-                  <li key={link.href}>
+                <li>
+                  <Link
+                    href="/shop"
+                    className="text-sm font-body text-black/40 hover:text-black transition-colors"
+                  >
+                    All Caps
+                  </Link>
+                </li>
+                {collections.map((collection) => (
+                  <li key={collection.slug}>
                     <Link
-                      href={link.href}
+                      href={`/shop/${collection.slug}`}
                       className="text-sm font-body text-black/40 hover:text-black transition-colors"
                     >
-                      {link.label}
+                      {collection.name}
                     </Link>
                   </li>
                 ))}
