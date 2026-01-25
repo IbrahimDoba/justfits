@@ -272,6 +272,15 @@ export function Footer() {
         </div>
       </div>
 
+      {/* Disclaimer */}
+      <div className="border-t border-black/5 bg-gray-50">
+        <div className="container px-6 py-6">
+          <p className="text-xs font-body text-black/40 text-center leading-relaxed max-w-4xl mx-auto">
+            <strong className="text-black/60">Disclaimer:</strong> JustFits is an independent brand and is not affiliated with, endorsed by, or sponsored by any automobile manufacturer including BMW AG, Mercedes-Benz Group AG, Porsche AG, or any other automotive company. All product designs are original creations inspired by automotive culture and heritage. Any references to automotive brands are used purely for descriptive and inspirational purposes. All trademarks and brand names are the property of their respective owners.
+          </p>
+        </div>
+      </div>
+
       {/* Copyright */}
       <div className="border-t border-black/5">
         <div className="container px-6 py-6">

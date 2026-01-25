@@ -35,6 +35,11 @@ const faqs = [
     answer:
       "Once your order is shipped, you will receive a confirmation email with a tracking number and a link to track your package in real-time.",
   },
+  {
+    question: "Are these official licensed products?",
+    answer:
+      "Our products are carefully designed and crafted to ensure high quality and authenticity in style. While they are not official licensed merchandise, we bring you the best automotive-inspired streetwear experience. JustFits is not affiliated with, endorsed by, or sponsored by any automobile manufacturer including BMW, Mercedes-Benz, Porsche, or any other automotive brand. All designs are original creations inspired by automotive culture and heritage.",
+  },
 ];
 
 export function FAQ() {

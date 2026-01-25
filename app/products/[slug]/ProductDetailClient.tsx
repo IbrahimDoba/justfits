@@ -11,6 +11,7 @@ import { ProductCard } from "@/components/ui/ProductCard";
 import { StarRating } from "@/components/ui/StarRating";
 import { ReviewModal } from "@/components/ui/ReviewModal";
 import { ReviewList } from "@/components/ui/ReviewList";
+import { ProductImageCarousel } from "@/components/ui/ProductImageCarousel";
 import {
   ArrowLeft,
   Minus,
@@ -101,7 +102,6 @@ export function ProductDetailClient({
 }: ProductDetailClientProps) {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [selectedImage, setSelectedImage] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -217,7 +217,7 @@ export function ProductDetailClient({
       <Navbar />
 
       {/* Breadcrumb */}
-      <div className="pt-8 pb-4 bg-gray-50">
+      <div className="pt-4 pb-4 bg-gray-50">
         <div className="container mx-auto px-6">
           <Link
             href="/shop"
@@ -230,63 +230,20 @@ export function ProductDetailClient({
       </div>
 
       {/* Product Section */}
-      <section className="py-6 bg-gray-50">
+      <section className="py-4 md:py-6 lg:py-6 bg-gray-50">
         <div className="container mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16">
+          <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-12 xl:gap-16">
             {/* Product Images */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
+              className="lg:sticky lg:top-28"
             >
-              <div className="sticky top-28">
-                {/* Main Image */}
-                <motion.div
-                  key={selectedImage}
-                  initial={{ opacity: 0.8 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="aspect-[4/5] rounded-3xl overflow-hidden bg-white shadow-lg mb-4"
-                >
-                  {product.images.length > 0 ? (
-                    <Image
-                      src={product.images[selectedImage] || product.images[0]}
-                      alt={product.name}
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 50vw"
-                      className="object-cover"
-                      priority
-                    />
-                  ) : (
-                    <ProductImagePlaceholder variant={1} />
-                  )}
-                </motion.div>
-
-                {/* Thumbnail Gallery */}
-                {product.images.length > 1 && (
-                  <div className="grid grid-cols-4 gap-3">
-                    {product.images.slice(0, 4).map((image, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedImage(index)}
-                        className={`aspect-square rounded-xl overflow-hidden bg-white shadow transition-all duration-200 relative ${
-                          selectedImage === index
-                            ? "ring-2 ring-black opacity-100"
-                            : "opacity-50 hover:opacity-80"
-                        }`}
-                      >
-                        <Image
-                          src={image}
-                          alt={`${product.name} ${index + 1}`}
-                          fill
-                          sizes="100px"
-                          className="object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ProductImageCarousel
+                images={product.images}
+                productName={product.name}
+              />
             </motion.div>
 
             {/* Product Info */}

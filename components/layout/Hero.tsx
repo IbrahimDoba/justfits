@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { staggerContainer, staggerItem } from "@/animations/variants";
+import { getImageBlurDataURL } from "@/lib/utils/imageBlur";
 
 const heroImages = [
   "/justfits/wwbenz2.png",
@@ -197,6 +198,8 @@ export function Hero() {
                             priority={index === 0}
                             quality={90}
                             sizes="(max-width: 1024px) 100vw, 50vw"
+                            placeholder="blur"
+                            blurDataURL={getImageBlurDataURL(image)}
                           />
                         </div>
                       </div>

@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { ProductImagePlaceholder } from "./ProductImagePlaceholder";
+import { getImageBlurDataURL, getProductImageSizes } from "@/lib/utils/imageBlur";
 
 interface ProductCardProps {
   title: string;
@@ -40,17 +41,17 @@ export function ProductCard({
       `}
     >
       {/* Product Image */}
-      <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
+      <div className="relative aspect-[4/5] overflow-hidden bg-gray-50">
         {image ? (
           <Image
             src={image}
             alt={title}
             fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            sizes={getProductImageSizes()}
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
             placeholder="blur"
-            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8+vzFfwAJUwo0T70Y+AAAAABJRU5ErkJggg=="
+            blurDataURL={getImageBlurDataURL(image)}
           />
         ) : (
           <ProductImagePlaceholder variant={variant} />

@@ -387,3 +387,20 @@ select {
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+/* Embla Carousel Base */
+.embla {
+  overflow: hidden;
+}
+.embla__container {
+  display: flex;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+.embla__slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
