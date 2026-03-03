@@ -49,6 +49,7 @@ import { defaultMetadata } from "@/config/siteConfig";
 export const metadata: Metadata = defaultMetadata;
 
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+import { Analytics } from "@vercel/analytics/next";
 
 export default function RootLayout({
   children,
@@ -69,6 +70,7 @@ export default function RootLayout({
                   {/* <AnnouncementBar /> */}
                   {children}
                   <CartDrawer />
+                  <Analytics />
                 </CartProvider>
               </WishlistProvider>
             </ToastProvider>

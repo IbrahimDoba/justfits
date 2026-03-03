@@ -329,10 +329,13 @@ export default function EditProductPage() {
                 onRemove={(url) =>
                   setImages(images.filter((img) => img !== url))
                 }
+                onSetPrimary={(url) =>
+                  setImages([url, ...images.filter((img) => img !== url)])
+                }
               />
               <p className="text-xs text-gray-500 mt-4">
-                First image will be the primary image. Images are uploaded to
-                Cloudinary.
+                Hover an image and click <strong>Set as main</strong> to make it
+                the primary image. Images are uploaded to Cloudinary.
               </p>
             </motion.div>
 

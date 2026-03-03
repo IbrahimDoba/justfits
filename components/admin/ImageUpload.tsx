@@ -2,12 +2,13 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { Upload, X, Loader2, Image as ImageIcon, Star } from "lucide-react";
 
 interface ImageUploadProps {
   value: string[];
   onChange: (value: string[]) => void;
   onRemove: (value: string) => void;
+  onSetPrimary?: (url: string) => void;
   disabled?: boolean;
 }
 
@@ -15,6 +16,7 @@ export default function ImageUpload({
   value,
   onChange,
   onRemove,
+  onSetPrimary,
   disabled,
 }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
@@ -102,28 +104,60 @@ export default function ImageUpload({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {value.map((url) => (
-          <div
-            key={url}
-            className="relative aspect-square rounded-xl bg-gray-100 overflow-hidden group border border-gray-200"
-          >
-            <div className="z-10 absolute top-2 right-2">
-              <button
-                type="button"
-                onClick={() => onRemove(url)}
-                disabled={disabled}
-                className="p-1.5 bg-red-500 text-white rounded-lg shadow-sm hover:bg-red-600 transition-colors"
-              >
-                <X size={14} />
-              </button>
+        {value.map((url, index) => {
+          const isPrimary = index === 0;
+          return (
+            <div
+              key={url}
+              className={`relative aspect-square rounded-xl bg-gray-100 overflow-hidden group border-2 transition-colors ${
+                isPrimary ? "border-amber-400" : "border-gray-200"
+              }`}
+            >
+              {/* Remove button */}
+              <div className="z-10 absolute top-2 right-2">
+                <button
+                  type="button"
+                  onClick={() => onRemove(url)}
+                  disabled={disabled}
+                  className="p-1.5 bg-red-500 text-white rounded-lg shadow-sm hover:bg-red-600 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              {/* Primary badge */}
+              {isPrimary && (
+                <div className="z-10 absolute top-2 left-2">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-400 text-white text-xs font-medium rounded-md shadow-sm">
+                    <Star size={10} fill="white" />
+                    Main
+                  </span>
+                </div>
+              )}
+
+              {/* Set as main button (non-primary only) */}
+              {!isPrimary && onSetPrimary && (
+                <div className="z-10 absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => onSetPrimary(url)}
+                    disabled={disabled}
+                    className="inline-flex items-center gap-1 px-1.5 py-1 bg-white text-gray-700 text-xs font-medium rounded-md shadow-sm hover:bg-amber-400 hover:text-white transition-colors border border-gray-200"
+                  >
+                    <Star size={10} />
+                    Set as main
+                  </button>
+                </div>
+              )}
+
+              <img
+                src={url}
+                alt="Uploaded image"
+                className="object-cover w-full h-full"
+              />
             </div>
-            <img
-              src={url}
-              alt="Uploaded image"
-              className="object-cover w-full h-full"
-            />
-          </div>
-        ))}
+          );
+        })}
         {isUploading && (
           <div className="aspect-square rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
