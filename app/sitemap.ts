@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 import { prisma } from "@/lib/db/prisma";
 import { siteConfig } from "@/config/siteConfig";
 
-const baseUrl = siteConfig.url;
+const baseUrl = siteConfig.url.replace(/\/$/, "");
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
