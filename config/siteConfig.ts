@@ -73,4 +73,7 @@ export const defaultMetadata: Metadata = {
     shortcut: "/favicon-16x16.png",
     apple: "/apple-touch-icon.png",
   },
+  other: {
+    "facebook-domain-verification": "n5rs41a79kuqjrgok8fuav3hp05rva",
+  },
 };
