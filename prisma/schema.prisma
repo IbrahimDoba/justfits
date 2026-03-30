@@ -375,6 +375,9 @@ model StoreSetting {
   shippingFee           Float  @default(2500)
   freeShippingThreshold Float? @default(50000)
 
+  // Shipping & Delivery
+  deliveryTimeline String? @default("3-5 business days within Lagos, 5-7 business days nationwide")
+
   // Inventory
   lowStockThreshold Int @default(5)
 
