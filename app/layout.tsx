@@ -50,6 +50,7 @@ export const metadata: Metadata = defaultMetadata;
 
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
 
 export default function RootLayout({
   children,
@@ -71,6 +72,12 @@ export default function RootLayout({
                   {children}
                   <CartDrawer />
                   <Analytics />
+                  <Script
+                    src="https://cdn.databuddy.cc/databuddy.js"
+                    data-client-id="700dd4bf-06a9-4edc-bbc5-59b9ad17bd10"
+                    crossOrigin="anonymous"
+                    strategy="afterInteractive"
+                  />
                 </CartProvider>
               </WishlistProvider>
             </ToastProvider>
