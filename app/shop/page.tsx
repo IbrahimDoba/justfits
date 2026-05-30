@@ -58,7 +58,7 @@ export default function ShopPage() {
       <Navbar />
 
       {/* Filters & Products */}
-      <section className="pt-28 pb-12">
+      <section className="pt-20 pb-12">
         <div className="container mx-auto px-6">
           {/* Filter Bar */}
           <motion.div
