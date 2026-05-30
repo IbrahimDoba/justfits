@@ -4,14 +4,17 @@ import { useEffect, Suspense } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
-import { CheckCircle, Package, Mail, ArrowRight } from 'lucide-react'
+import { CheckCircle, Package, Mail, ArrowRight, MapPin } from 'lucide-react'
 import confetti from 'canvas-confetti'
 
 function SuccessContent() {
   const searchParams = useSearchParams()
   const orderNumber = searchParams.get('order') || 'N/A'
+  const { data: session } = useSession()
+  const isGuest = !session?.user
 
   useEffect(() => {
     // Trigger confetti on mount
@@ -77,7 +80,9 @@ function SuccessContent() {
             transition={{ delay: 0.4 }}
             className="text-gray-600 text-lg mb-8"
           >
-            Thank you for your purchase. Your order has been received and is being processed.
+            {isGuest
+              ? "Thank you! Check your email — we've sent your order confirmation and tracking link."
+              : "Thank you for your purchase. Your order has been received and is being processed."}
           </motion.p>
 
           {/* Order Number */}
@@ -109,10 +114,25 @@ function SuccessContent() {
                 <div>
                   <p className="font-medium text-black">Confirmation Email</p>
                   <p className="text-sm text-gray-500">
-                    You&apos;ll receive an email with your order details shortly.
+                    {isGuest
+                      ? "We've sent your order confirmation and tracking link to your email."
+                      : "You'll receive an email with your order details shortly."}
                   </p>
                 </div>
               </div>
+              {isGuest && (
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <MapPin size={18} className="text-gray-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-black">Track Your Order</p>
+                    <p className="text-sm text-gray-500">
+                      Use the tracking link in your email or visit the Track Order page anytime.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <Package size={18} className="text-gray-600" />
@@ -134,13 +154,23 @@ function SuccessContent() {
             transition={{ delay: 0.7 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Link
-              href="/orders"
-              className="inline-flex items-center justify-center gap-2 bg-black text-white px-8 py-4 rounded-full font-medium hover:bg-gray-800 transition-colors"
-            >
-              View My Orders
-              <ArrowRight size={18} />
-            </Link>
+            {isGuest ? (
+              <Link
+                href={`/track-order?order=${orderNumber}`}
+                className="inline-flex items-center justify-center gap-2 bg-black text-white px-8 py-4 rounded-full font-medium hover:bg-gray-800 transition-colors"
+              >
+                Track My Order
+                <ArrowRight size={18} />
+              </Link>
+            ) : (
+              <Link
+                href="/orders"
+                className="inline-flex items-center justify-center gap-2 bg-black text-white px-8 py-4 rounded-full font-medium hover:bg-gray-800 transition-colors"
+              >
+                View My Orders
+                <ArrowRight size={18} />
+              </Link>
+            )}
             <Link
               href="/shop"
               className="inline-flex items-center justify-center gap-2 bg-white text-black px-8 py-4 rounded-full font-medium border border-gray-200 hover:bg-gray-50 transition-colors"

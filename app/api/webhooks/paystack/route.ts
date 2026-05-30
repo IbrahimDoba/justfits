@@ -130,11 +130,32 @@ async function handleSuccessfulPayment(data: any) {
     if (payment.order && payment.order.shippingAddress) {
       const order = payment.order;
       const address = order.shippingAddress;
+      const isGuest = !order.userId;
+      const customerEmail = customer.email;
+
+      // For guests: generate a reward code they can claim after signing up
+      let guestRewardCode: string | undefined;
+      if (isGuest) {
+        guestRewardCode = `GUEST-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        await prisma.loyaltyReward.create({
+          data: {
+            userId: null,
+            code: guestRewardCode,
+            discountPercent: 15,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+        }).catch((err) => console.error("Failed to create guest reward:", err));
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://justfits.shop";
+      const trackingUrl = isGuest
+        ? `${baseUrl}/track-order?order=${order.orderNumber}&email=${encodeURIComponent(customerEmail)}`
+        : undefined;
 
       await sendOrderConfirmationEmail({
         orderNumber: order.orderNumber,
         customerName: `${address.firstName} ${address.lastName}`,
-        customerEmail: customer.email,
+        customerEmail,
         items: order.items.map((item) => ({
           name: item.variant.product.name,
           size: item.variant.size || "One Size",
@@ -150,6 +171,8 @@ async function handleSuccessfulPayment(data: any) {
           state: address.state,
           postalCode: address.postalCode || "",
         },
+        trackingUrl,
+        rewardCode: guestRewardCode,
       }).catch((err) =>
         console.error("Failed to send confirmation email:", err)
       );

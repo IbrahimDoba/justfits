@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
       recentOrders: recentOrders.map((order) => ({
         id: order.id,
         orderNumber: order.orderNumber,
-        customer: order.user.name || order.user.email,
+        customer: order.user?.name || order.user?.email || order.guestEmail || "Guest",
         items: order.items.length,
         total: Number(order.total),
         status: order.status.toLowerCase(),

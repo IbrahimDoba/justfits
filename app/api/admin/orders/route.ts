@@ -69,8 +69,8 @@ export async function GET(request: NextRequest) {
       orders: orders.map((order) => ({
         id: order.orderNumber,
         customer: {
-          name: order.user.name || "Unknown",
-          email: order.user.email,
+          name: order.user?.name || order.guestEmail || "Guest",
+          email: order.user?.email || order.guestEmail || "",
         },
         items: order.items.length,
         total: Number(order.total),

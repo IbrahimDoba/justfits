@@ -1,19 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import prisma from "@/lib/db/prisma";
 import { sendOrderConfirmationEmail, sendAdminOrderNotification } from "@/lib/services/email";
 
 export async function GET(request: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Please sign in to verify payment" },
-        { status: 401 }
-      );
-    }
-
     // Get reference from query params
     const { searchParams } = new URL(request.url);
     const reference = searchParams.get("reference");
@@ -127,12 +117,33 @@ export async function GET(request: Request) {
     if (shouldSendEmail && payment.order && payment.order.shippingAddress) {
       const order = payment.order;
       const address = order.shippingAddress;
+      const isGuest = !order.userId;
+      const customerEmail = transaction.customer?.email || address.phone;
+
+      // For guests: generate a reward code they can claim after signing up
+      let guestRewardCode: string | undefined;
+      if (isGuest) {
+        guestRewardCode = `GUEST-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        await prisma.loyaltyReward.create({
+          data: {
+            userId: null,
+            code: guestRewardCode,
+            discountPercent: 15,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
+        }).catch((err) => console.error("Failed to create guest reward:", err));
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://justfits.shop";
+      const trackingUrl = isGuest
+        ? `${baseUrl}/track-order?order=${order.orderNumber}&email=${encodeURIComponent(customerEmail)}`
+        : undefined;
 
       // Send customer confirmation email
       sendOrderConfirmationEmail({
         orderNumber: order.orderNumber,
         customerName: `${address.firstName} ${address.lastName}`,
-        customerEmail: transaction.customer?.email || address.phone,
+        customerEmail,
         items: order.items.map((item) => ({
           name: item.variant.product.name,
           size: item.variant.size || "One Size",
@@ -148,6 +159,8 @@ export async function GET(request: Request) {
           state: address.state,
           postalCode: address.postalCode || "",
         },
+        trackingUrl,
+        rewardCode: guestRewardCode,
       }).catch((err) => console.error("Failed to send confirmation email:", err));
 
       // Send admin notification email

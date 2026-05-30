@@ -5,13 +5,6 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
 
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Please sign in to make a payment" },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json();
     const {
       email,
@@ -46,7 +39,7 @@ export async function POST(request: Request) {
           currency: "NGN",
           callback_url: callback_url || `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/verify`,
           metadata: {
-            userId: session.user.id,
+            ...(session?.user?.id ? { userId: session.user.id } : { guestEmail: email }),
             ...metadata,
           },
           channels: ["card", "bank", "ussd", "qr", "mobile_money", "bank_transfer"],

@@ -19,7 +19,10 @@ export async function GET(request: NextRequest) {
     const order = await prisma.order.findFirst({
       where: {
         orderNumber,
-        user: { email },
+        OR: [
+          { user: { email } },
+          { guestEmail: email },
+        ],
       },
       select: {
         orderNumber: true,

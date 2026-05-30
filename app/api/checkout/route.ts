@@ -28,13 +28,7 @@ function generateOrderNumber() {
 export async function POST(request: Request) {
   try {
     const session = await auth();
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Please sign in to place an order" },
-        { status: 401 }
-      );
-    }
+    const isGuest = !session?.user?.id;
 
     const body = await request.json();
     const {
@@ -71,7 +65,7 @@ export async function POST(request: Request) {
     // Create or find shipping address
     const shippingAddress = await prisma.address.create({
       data: {
-        userId: session.user.id,
+        userId: session?.user?.id ?? null,
         firstName,
         lastName,
         phone: phone || "",
@@ -167,8 +161,8 @@ export async function POST(request: Request) {
       });
     }
 
-    // If reward code provided, verify and mark as redeemed
-    if (rewardCode) {
+    // If reward code provided, verify and mark as redeemed (logged-in users only)
+    if (rewardCode && session?.user?.id) {
       const reward = await prisma.loyaltyReward.findUnique({
         where: { code: rewardCode.toUpperCase() },
       });
@@ -189,11 +183,26 @@ export async function POST(request: Request) {
       }
     }
 
+    // For guests: generate a reward code they can claim after signing up
+    let guestRewardCode: string | null = null;
+    if (isGuest) {
+      guestRewardCode = `GUEST-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      await prisma.loyaltyReward.create({
+        data: {
+          userId: null,
+          code: guestRewardCode,
+          discountPercent: 15,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        },
+      });
+    }
+
     // Create order with items and payment
     const order = await prisma.order.create({
       data: {
         orderNumber: generateOrderNumber(),
-        userId: session.user.id,
+        userId: session?.user?.id ?? null,
+        guestEmail: isGuest ? email.toLowerCase() : null,
         addressId: shippingAddress.id,
         status: "PENDING",
         subtotal: subtotal,
@@ -232,6 +241,11 @@ export async function POST(request: Request) {
       },
     });
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://justfits.shop";
+    const trackingUrl = isGuest
+      ? `${baseUrl}/track-order?order=${order.orderNumber}&email=${encodeURIComponent(email)}`
+      : undefined;
+
     // Only send emails for bank transfers (manual payment)
     // For Paystack payments, emails are sent via webhook after successful payment
     if (paymentMethod === "BANK_TRANSFER") {
@@ -256,6 +270,8 @@ export async function POST(request: Request) {
           state,
           postalCode,
         },
+        trackingUrl,
+        rewardCode: guestRewardCode || undefined,
       }).catch((err) => console.error("Failed to send confirmation email:", err));
 
       // Send admin notification email (don't await to not block response)

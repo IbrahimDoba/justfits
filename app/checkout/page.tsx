@@ -106,7 +106,14 @@ export default function CheckoutPage() {
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const shippingCost = totalPrice >= 50000 ? 0 : 3500;
+  // Shipping rate from zone config
+  const [shippingRate, setShippingRate] = useState<{
+    price: number;
+    freeShippingThreshold: number;
+  }>({ price: 3500, freeShippingThreshold: 50000 });
+  const [isFetchingRate, setIsFetchingRate] = useState(false);
+
+  const shippingCost = totalPrice >= shippingRate.freeShippingThreshold ? 0 : shippingRate.price;
   const discountAmount = appliedReward
     ? Math.round((totalPrice * appliedReward.discountPercent) / 100)
     : 0;
@@ -133,6 +140,24 @@ export default function CheckoutPage() {
       fetchBankDetails();
     }
   }, [paymentMethod]);
+
+  // Fetch shipping rate whenever the customer picks a state
+  useEffect(() => {
+    if (!formData.state) return;
+    setIsFetchingRate(true);
+    fetch(`/api/shipping/rate?state=${formData.state}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.price !== undefined) {
+          setShippingRate({
+            price: data.price,
+            freeShippingThreshold: data.freeShippingThreshold,
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsFetchingRate(false));
+  }, [formData.state]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -891,10 +916,10 @@ export default function CheckoutPage() {
                     </h2>
 
                     {/* Cart Items */}
-                    <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 sm:gap-0 sm:space-y-4 mb-6 max-h-[300px] overflow-y-auto">
+                    <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto">
                       {items.map((item) => (
-                        <div key={item.id} className="flex flex-col sm:flex-row sm:gap-4">
-                          <div className="relative w-full aspect-square sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                        <div key={item.id} className="flex gap-4">
+                          <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0">
                             {item.product.images && item.product.images[0] ? (
                               <img
                                 src={item.product.images[0]}
@@ -907,7 +932,7 @@ export default function CheckoutPage() {
                               />
                             )}
                           </div>
-                          <div className="flex-1 min-w-0 mt-2 sm:mt-0">
+                          <div className="flex-1 min-w-0">
                             <p className="font-medium text-black text-sm truncate">
                               {item.product.name}
                             </p>
@@ -916,11 +941,8 @@ export default function CheckoutPage() {
                                 Size: {item.size}
                               </p>
                             )}
-                            <p className="font-mono text-xs text-black mt-1 sm:hidden">
-                              {formatPrice(item.product.price * item.quantity)}
-                            </p>
                           </div>
-                          <p className="font-mono text-sm text-black hidden sm:block">
+                          <p className="font-mono text-sm text-black">
                             {formatPrice(item.product.price * item.quantity)}
                           </p>
                         </div>
@@ -1008,9 +1030,16 @@ export default function CheckoutPage() {
                         </div>
                       )}
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Shipping</span>
+                        <span className="text-gray-600">
+                          Shipping
+                          {!formData.state && (
+                            <span className="text-gray-400 font-normal"> (select state)</span>
+                          )}
+                        </span>
                         <span className="font-mono text-black">
-                          {shippingCost === 0 ? (
+                          {isFetchingRate ? (
+                            <Loader2 size={14} className="animate-spin text-gray-400" />
+                          ) : shippingCost === 0 ? (
                             <span className="text-green-600">Free</span>
                           ) : (
                             formatPrice(shippingCost)
@@ -1026,11 +1055,10 @@ export default function CheckoutPage() {
                     </div>
 
                     {/* Free Shipping Progress */}
-                    {totalPrice < 50000 && (
+                    {shippingCost > 0 && formData.state && (
                       <div className="mt-4 p-3 bg-amber-50 rounded-xl">
                         <p className="text-xs text-amber-800">
-                          Add {formatPrice(50000 - totalPrice)} more for free
-                          shipping
+                          Add {formatPrice(shippingRate.freeShippingThreshold - totalPrice)} more for free shipping
                         </p>
                       </div>
                     )}

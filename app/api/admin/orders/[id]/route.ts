@@ -41,8 +41,8 @@ export async function GET(
       order: {
         id: order.orderNumber,
         customer: {
-          name: order.user.name || "Unknown",
-          email: order.user.email,
+          name: order.user?.name || order.guestEmail || "Guest",
+          email: order.user?.email || order.guestEmail || "",
           phone: order.shippingAddress.phone,
         },
         shippingAddress: {
@@ -150,22 +150,23 @@ export async function PUT(
       });
     });
 
-    // Award loyalty stamp when order is confirmed (outside transaction for simplicity)
-    if (isBeingConfirmed) {
+    // Award loyalty stamp when order is confirmed (logged-in users only)
+    if (isBeingConfirmed && currentOrder.userId) {
       await awardLoyaltyStamp(currentOrder.userId);
     }
 
     // Send status update email for important status changes
     const emailStatuses = ["PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
+    const customerEmail = currentOrder.user?.email || currentOrder.guestEmail;
     if (
       emailStatuses.includes(newStatus) &&
       currentOrder.status !== newStatus &&
-      currentOrder.user.email
+      customerEmail
     ) {
       sendOrderStatusEmail({
         orderNumber: order.orderNumber,
-        customerName: currentOrder.user.name || "Customer",
-        customerEmail: currentOrder.user.email,
+        customerName: currentOrder.user?.name || "Customer",
+        customerEmail,
         status: newStatus,
       }).catch((err) => console.error("Failed to send status email:", err));
     }

@@ -27,6 +27,8 @@ interface OrderEmailData {
     state: string;
     postalCode?: string;
   };
+  trackingUrl?: string;
+  rewardCode?: string;
 }
 
 function formatCurrency(amount: number): string {
@@ -128,6 +130,23 @@ function generateOrderConfirmationHtml(data: OrderEmailData): string {
             We're preparing your order for shipment. You'll receive another email when your order ships.
           </p>
         </div>
+
+        ${data.trackingUrl ? `
+        <div style="margin-top: 20px; text-align: center;">
+          <a href="${data.trackingUrl}" style="display: inline-block; background: #000; color: #fff; padding: 14px 32px; border-radius: 50px; text-decoration: none; font-weight: 600; font-size: 15px;">
+            Track Your Order
+          </a>
+        </div>
+        ` : ""}
+
+        ${data.rewardCode ? `
+        <div style="margin-top: 20px; padding: 20px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; text-align: center;">
+          <p style="margin: 0 0 8px 0; font-weight: 700; font-size: 15px;">You've earned a reward!</p>
+          <p style="margin: 0 0 12px 0; color: #666; font-size: 14px;">Sign up at justfits.shop to claim 15% off your next order.</p>
+          <p style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 2px; color: #000;">${data.rewardCode}</p>
+          <p style="margin: 8px 0 0 0; color: #999; font-size: 12px;">Code expires in 30 days</p>
+        </div>
+        ` : ""}
       </div>
 
       <div style="border-top: 1px solid #eee; padding-top: 20px; text-align: center; color: #999; font-size: 12px;">
@@ -164,7 +183,7 @@ ${data.shippingAddress.city}, ${data.shippingAddress.state}${data.shippingAddres
 Nigeria
 
 We're preparing your order for shipment. You'll receive another email when your order ships.
-
+${data.trackingUrl ? `\nTrack your order: ${data.trackingUrl}\n` : ""}${data.rewardCode ? `\nYou've earned a reward! Sign up at justfits.shop and use code ${data.rewardCode} for 15% off your next order. Expires in 30 days.\n` : ""}
 Questions? Contact us at support@justfits.com
 
 © ${new Date().getFullYear()} JustFits. All rights reserved.
