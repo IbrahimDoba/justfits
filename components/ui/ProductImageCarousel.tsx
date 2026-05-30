@@ -86,7 +86,7 @@ export function ProductImageCarousel({
                     alt={`${productName} ${index + 1}`}
                     fill
                     sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-contain lg:object-cover"
+                    className="object-contain"
                     style={{ objectPosition: 'center' }}
                     priority={index === 0}
                     loading={index === 0 ? undefined : "lazy"}
