@@ -57,11 +57,8 @@ export default function ShopPage() {
     <main className="min-h-screen bg-gray-50">
       <Navbar />
 
-      {/* Navbar spacer */}
-      <div className="pt-24" />
-
       {/* Filters & Products */}
-      <section className="py-12">
+      <section className="pt-28 pb-12">
         <div className="container mx-auto px-6">
           {/* Filter Bar */}
           <motion.div
