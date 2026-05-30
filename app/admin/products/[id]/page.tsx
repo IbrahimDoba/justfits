@@ -41,7 +41,7 @@ export default function EditProductPage() {
     compareAtPrice: "",
     categoryId: "",
     tags: "",
-    status: "draft",
+    status: "active",
   });
 
   const [variants, setVariants] = useState<ProductVariant[]>([]);
@@ -75,9 +75,7 @@ export default function EditProductPage() {
           compareAtPrice: product.compareAtPrice?.toString() || "",
           categoryId: product.categoryId,
           tags: product.tags?.join(", ") || "",
-          status: product.status ? "active" : "draft", // Fix status mapping if needed. Schema has isActive boolean.
-          // Wait, earlier I saw isActive. Let's map correctly.
-          // Schema has `isActive` boolean. The form uses `status` string "active"|"draft"
+          status: product.isActive ? "active" : "draft",
         });
 
         // Map variants
