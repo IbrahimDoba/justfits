@@ -57,27 +57,8 @@ export default function ShopPage() {
     <main className="min-h-screen bg-gray-50">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-16 bg-white">
-        <div className="container mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center max-w-3xl mx-auto"
-          >
-            <h1 className="font-display text-5xl md:text-7xl text-black tracking-tight mb-6">
-              THE COLLECTION
-            </h1>
-            <p className="text-gray-600 text-lg leading-relaxed">
-              Premium caps inspired by the most iconic cars in automotive
-              history.
-              <br className="hidden sm:block" />
-              Each piece is a tribute to engineering excellence.
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      {/* Navbar spacer */}
+      <div className="pt-24" />
 
       {/* Filters & Products */}
       <section className="py-12">
@@ -156,7 +137,7 @@ export default function ShopPage() {
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+                className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-8"
               >
                 {products.map((product, index) => (
                   <motion.div

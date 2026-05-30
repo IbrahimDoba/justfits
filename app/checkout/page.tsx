@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -68,6 +69,8 @@ type PaymentMethod = "PAYSTACK" | "BANK_TRANSFER";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isGuest = !session?.user;
   const { items, totalItems, totalPrice, clearCart } = useCart();
   const { showToast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -888,10 +891,10 @@ export default function CheckoutPage() {
                     </h2>
 
                     {/* Cart Items */}
-                    <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-1 gap-3 sm:gap-0 sm:space-y-4 mb-6 max-h-[300px] overflow-y-auto">
                       {items.map((item) => (
-                        <div key={item.id} className="flex gap-4">
-                          <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                        <div key={item.id} className="flex flex-col sm:flex-row sm:gap-4">
+                          <div className="relative w-full aspect-square sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0">
                             {item.product.images && item.product.images[0] ? (
                               <img
                                 src={item.product.images[0]}
@@ -904,7 +907,7 @@ export default function CheckoutPage() {
                               />
                             )}
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 mt-2 sm:mt-0">
                             <p className="font-medium text-black text-sm truncate">
                               {item.product.name}
                             </p>
@@ -913,16 +916,19 @@ export default function CheckoutPage() {
                                 Size: {item.size}
                               </p>
                             )}
+                            <p className="font-mono text-xs text-black mt-1 sm:hidden">
+                              {formatPrice(item.product.price * item.quantity)}
+                            </p>
                           </div>
-                          <p className="font-mono text-sm text-black">
+                          <p className="font-mono text-sm text-black hidden sm:block">
                             {formatPrice(item.product.price * item.quantity)}
                           </p>
                         </div>
                       ))}
                     </div>
 
-                    {/* Reward Code Section */}
-                    <div className="border-t border-gray-100 pt-4 mb-4">
+                    {/* Reward Code Section — logged-in users only */}
+                    {!isGuest && <div className="border-t border-gray-100 pt-4 mb-4">
                       <div className="flex items-center gap-2 mb-3">
                         <Tag size={16} className="text-gray-500" />
                         <span className="text-sm font-medium text-gray-700">
@@ -979,7 +985,7 @@ export default function CheckoutPage() {
                           </button>
                         </div>
                       )}
-                    </div>
+                    </div>}
 
                     {/* Price Summary */}
                     <div className="border-t border-gray-100 pt-4 space-y-3">
