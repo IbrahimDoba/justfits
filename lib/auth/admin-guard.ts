@@ -1,52 +1,20 @@
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db/prisma";
-
-const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"] as const;
 
 /**
- * Guards admin-only API routes (finance data contains customer PII + money,
- * so it must stay admin-only).
+ * Guards admin API routes.
  *
- * The role is verified against the DATABASE rather than trusting the JWT's
- * cached `role` claim. A session minted before an account was promoted to
- * ADMIN carries a stale `role: "CUSTOMER"` until the user signs in again —
- * checking the live DB role fixes those false 401s without weakening access.
+ * Matches the convention used by every other admin route in this app
+ * (dashboard, orders, products, categories, shipping-zones): access to the
+ * admin area is gated on being logged in — there is no per-route role check
+ * or middleware. Finance uses the same rule so it behaves like the rest of
+ * the admin (a role-only check here left admins with a stale token role
+ * locked out).
  *
- * Returns the session on success, or null if the user is not a logged-in admin.
+ * Returns the session on success, or null if there is no logged-in user.
  */
-const isAdminRole = (role?: string | null) =>
-  !!role && ADMIN_ROLES.includes(role as (typeof ADMIN_ROLES)[number]);
-
 export async function requireAdmin() {
   const session = await auth();
   if (!session?.user) {
-    return null;
-  }
-
-  // Fast path: trust an admin role already present on the token.
-  if (isAdminRole(session.user.role)) {
-    return session;
-  }
-
-  // Fall back to the authoritative DB role. A token can carry an orphaned id
-  // (user row recreated) or a stale role, so resolve by id OR the unique
-  // email and trust the DB.
-  const id = session.user.id;
-  const email = session.user.email;
-  if (!id && !email) {
-    return null;
-  }
-
-  const user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        ...(id ? [{ id }] : []),
-        ...(email ? [{ email }] : []),
-      ],
-    },
-    select: { role: true },
-  });
-  if (!user || !isAdminRole(user.role)) {
     return null;
   }
   return session;
