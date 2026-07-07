@@ -497,3 +497,70 @@ export async function sendAdminOrderNotification(data: AdminOrderNotificationDat
     return { success: false, error };
   }
 }
+
+interface PasswordResetEmailData {
+  email: string;
+  name?: string | null;
+  resetUrl: string;
+}
+
+function generatePasswordResetHtml(data: PasswordResetEmailData): string {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 0;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;">
+        <tr><td style="background:#000000;padding:28px;text-align:center;">
+          <span style="color:#ffffff;font-size:24px;font-weight:bold;letter-spacing:2px;">JUSTFITS</span>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <h1 style="margin:0 0 12px;font-size:20px;color:#111827;">Reset your password</h1>
+          <p style="margin:0 0 16px;font-size:14px;line-height:22px;color:#4b5563;">
+            Hi ${data.name || "there"}, we received a request to reset your JUSTFITS password.
+            Click the button below to choose a new one. This link expires in 1 hour.
+          </p>
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+            <tr><td style="border-radius:12px;background:#000000;">
+              <a href="${data.resetUrl}" style="display:inline-block;padding:14px 28px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;border-radius:12px;">Reset Password</a>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 8px;font-size:12px;color:#6b7280;">Or paste this link into your browser:</p>
+          <p style="margin:0 0 16px;font-size:12px;color:#2563eb;word-break:break-all;">${data.resetUrl}</p>
+          <p style="margin:0;font-size:12px;line-height:20px;color:#9ca3af;">
+            If you didn't request this, you can safely ignore this email — your password won't change.
+          </p>
+        </td></tr>
+        <tr><td style="padding:20px;text-align:center;background:#f9fafb;">
+          <span style="font-size:11px;color:#9ca3af;">&copy; JUSTFITS. Premium car-themed caps.</span>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendPasswordResetEmail(data: PasswordResetEmailData) {
+  try {
+    const { data: result, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: data.email,
+      subject: "Reset your JUSTFITS password",
+      html: generatePasswordResetHtml(data),
+      text: `Reset your JUSTFITS password using this link (expires in 1 hour): ${data.resetUrl}\n\nIf you didn't request this, ignore this email.`,
+    });
+
+    if (error) {
+      console.error("Failed to send password reset email:", error);
+      return { success: false, error };
+    }
+
+    console.log("Password reset email sent:", result?.id);
+    return { success: true, id: result?.id };
+  } catch (error) {
+    console.error("Error sending password reset email:", error);
+    return { success: false, error };
+  }
+}

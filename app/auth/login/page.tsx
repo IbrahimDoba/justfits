@@ -47,11 +47,16 @@ function LoginForm() {
       })
 
       if (result?.error) {
-        showToast(result.error, 'error')
-      } else {
+        // NextAuth returns a generic code (e.g. "CredentialsSignin") rather
+        // than the message thrown in authorize(); the only credentials failure
+        // is a bad email/password, so surface that clearly.
+        showToast('Invalid email or password', 'error')
+      } else if (result?.ok) {
         showToast('Welcome back!', 'success')
         router.push(callbackUrl)
         router.refresh()
+      } else {
+        showToast('Unable to sign in. Please try again.', 'error')
       }
     } catch {
       showToast('Something went wrong. Please try again.', 'error')
