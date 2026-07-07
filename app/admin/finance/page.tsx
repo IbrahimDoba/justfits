@@ -138,6 +138,7 @@ export default function FinancePage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const [saleModal, setSaleModal] = useState<{ open: boolean; edit?: Sale }>({
@@ -150,17 +151,23 @@ export default function FinancePage() {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [s, sl, ex] = await Promise.all([
         fetch("/api/admin/finance/summary").then((r) => r.json()),
         fetch("/api/admin/finance/sales").then((r) => r.json()),
         fetch("/api/admin/finance/expenses").then((r) => r.json()),
       ]);
-      setSummary(s);
-      setSales(sl.sales || []);
-      setExpenses(ex.expenses || []);
+      // Only accept well-formed responses; a non-200 returns { error } instead.
+      setSummary(s && s.totals ? s : null);
+      setSales(Array.isArray(sl?.sales) ? sl.sales : []);
+      setExpenses(Array.isArray(ex?.expenses) ? ex.expenses : []);
+      if (!s || !s.totals) {
+        setLoadError(s?.error || "Failed to load finance summary.");
+      }
     } catch (e) {
       console.error("Failed to load finance data", e);
+      setLoadError("Failed to load finance data.");
     } finally {
       setLoading(false);
     }
@@ -283,6 +290,18 @@ export default function FinancePage() {
         ))}
       </div>
 
+      {loadError && !loading && (
+        <div className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-sm text-red-700">
+          <span>{loadError}</span>
+          <button
+            onClick={loadAll}
+            className="px-3 py-1 rounded-md bg-red-600 text-white text-xs font-medium hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center h-64 text-gray-400">
           <Loader2 className="animate-spin" size={28} />
@@ -387,7 +406,13 @@ function StatCard({
 /* ------------------------------ overview ------------------------------ */
 
 function OverviewTab({ summary }: { summary: Summary | null }) {
-  if (!summary) return null;
+  if (!summary) {
+    return (
+      <EmptyState label="No summary data available yet. Add a sale or expense to get started." />
+    );
+  }
+  const monthly = summary.monthly ?? [];
+  const byCategory = summary.expensesByCategory ?? [];
   const money = (v: number) =>
     v >= 1_000_000
       ? `₦${(v / 1_000_000).toFixed(1)}M`
@@ -403,7 +428,7 @@ function OverviewTab({ summary }: { summary: Summary | null }) {
         </h3>
         <div className="h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={summary.monthly} margin={{ top: 8, right: 8 }}>
+            <BarChart data={monthly} margin={{ top: 8, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis
                 dataKey="name"
@@ -434,8 +459,8 @@ function OverviewTab({ summary }: { summary: Summary | null }) {
           Expenses by category
         </h3>
         <div className="space-y-3">
-          {summary.expensesByCategory.map((c) => {
-            const max = summary.expensesByCategory[0]?.amount || 1;
+          {byCategory.map((c) => {
+            const max = byCategory[0]?.amount || 1;
             return (
               <div key={c.category}>
                 <div className="flex items-center justify-between text-xs mb-1">
@@ -457,7 +482,7 @@ function OverviewTab({ summary }: { summary: Summary | null }) {
               </div>
             );
           })}
-          {summary.expensesByCategory.length === 0 && (
+          {byCategory.length === 0 && (
             <p className="text-sm text-gray-400">No expenses yet.</p>
           )}
         </div>
