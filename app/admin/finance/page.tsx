@@ -139,6 +139,7 @@ export default function FinancePage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
   const [search, setSearch] = useState("");
 
   const [saleModal, setSaleModal] = useState<{ open: boolean; edit?: Sale }>({
@@ -197,6 +198,27 @@ export default function FinancePage() {
         e.category.toLowerCase().includes(q)
     );
   }, [expenses, search]);
+
+  const importHistorical = async () => {
+    if (
+      !confirm(
+        "Import the historical spreadsheet records (31 sales + 26 expenses)? This only runs if the ledger is empty."
+      )
+    )
+      return;
+    setImporting(true);
+    try {
+      const res = await fetch("/api/admin/finance/import", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Import failed");
+      alert(data.message || "Done");
+      await loadAll();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const deleteSale = async (id: string) => {
     if (!confirm("Delete this sale? This cannot be undone.")) return;
@@ -272,6 +294,36 @@ export default function FinancePage() {
           loading={loading}
         />
       </div>
+
+      {/* Empty ledger — offer one-click historical import */}
+      {!loading &&
+        t &&
+        t.salesCount === 0 &&
+        t.expensesCount === 0 && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 px-4 py-4 rounded-xl bg-amber-50 border border-amber-200">
+            <div>
+              <p className="text-sm font-semibold text-amber-900">
+                Your ledger is empty
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Import your historical records from the spreadsheet (31 sales +
+                26 expenses).
+              </p>
+            </div>
+            <button
+              onClick={importHistorical}
+              disabled={importing}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50"
+            >
+              {importing ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Plus size={16} />
+              )}
+              Import historical data
+            </button>
+          </div>
+        )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-gray-200 mb-4">
