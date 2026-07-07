@@ -14,26 +14,34 @@ const ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"] as const;
  *
  * Returns the session on success, or null if the user is not a logged-in admin.
  */
+const isAdminRole = (role?: string | null) =>
+  !!role && ADMIN_ROLES.includes(role as (typeof ADMIN_ROLES)[number]);
+
 export async function requireAdmin() {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session?.user) {
     return null;
   }
 
   // Fast path: trust an admin role already present on the token.
-  if (
-    session.user.role &&
-    ADMIN_ROLES.includes(session.user.role as (typeof ADMIN_ROLES)[number])
-  ) {
+  if (isAdminRole(session.user.role)) {
     return session;
   }
 
-  // Fall back to the authoritative DB role (handles stale/unset token roles).
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+  // Fall back to the authoritative DB role. Stale tokens may be missing `id`
+  // and/or `role`, but the standard `email` claim is reliably present — look
+  // the user up by whichever identifier we have.
+  const id = session.user.id;
+  const email = session.user.email;
+  if (!id && !email) {
+    return null;
+  }
+
+  const user = await prisma.user.findFirst({
+    where: id ? { id } : { email: email as string },
     select: { role: true },
   });
-  if (!user || !ADMIN_ROLES.includes(user.role as (typeof ADMIN_ROLES)[number])) {
+  if (!user || !isAdminRole(user.role)) {
     return null;
   }
   return session;
