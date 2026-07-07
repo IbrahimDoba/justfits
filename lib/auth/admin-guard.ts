@@ -28,9 +28,9 @@ export async function requireAdmin() {
     return session;
   }
 
-  // Fall back to the authoritative DB role. Stale tokens may be missing `id`
-  // and/or `role`, but the standard `email` claim is reliably present — look
-  // the user up by whichever identifier we have.
+  // Fall back to the authoritative DB role. A token can carry an orphaned id
+  // (user row recreated) or a stale role, so resolve by id OR the unique
+  // email and trust the DB.
   const id = session.user.id;
   const email = session.user.email;
   if (!id && !email) {
@@ -38,7 +38,12 @@ export async function requireAdmin() {
   }
 
   const user = await prisma.user.findFirst({
-    where: id ? { id } : { email: email as string },
+    where: {
+      OR: [
+        ...(id ? [{ id }] : []),
+        ...(email ? [{ email }] : []),
+      ],
+    },
     select: { role: true },
   });
   if (!user || !isAdminRole(user.role)) {

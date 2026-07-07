@@ -14,23 +14,29 @@ export const authConfig: NextAuthConfig = {
         token.role = (user.role as string) || "CUSTOMER";
       }
 
-      // Keep the token's role in sync with the database so role changes
-      // (e.g. promoting an account to ADMIN) take effect without the user
-      // having to sign out and back in. Existing sessions can otherwise carry
-      // a stale role for the full 30-day token lifetime.
-      const userId = (token.id as string) || token.sub;
-      if (userId) {
+      // Keep the token in sync with the database so role changes take effect
+      // without re-login. Resolve by id OR the (unique) email: a token can
+      // carry an orphaned id if the user row was recreated, in which case the
+      // email still points at the right row — and we correct the id here.
+      const tokenId = (token.id as string) || token.sub;
+      const tokenEmail = token.email as string | undefined;
+      if (tokenId || tokenEmail) {
         try {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: userId },
-            select: { role: true },
+          const dbUser = await prisma.user.findFirst({
+            where: {
+              OR: [
+                ...(tokenId ? [{ id: tokenId }] : []),
+                ...(tokenEmail ? [{ email: tokenEmail }] : []),
+              ],
+            },
+            select: { id: true, role: true },
           });
           if (dbUser) {
-            token.id = userId;
+            token.id = dbUser.id;
             token.role = dbUser.role;
           }
         } catch {
-          // On a DB hiccup, keep whatever role is already on the token.
+          // On a DB hiccup, keep whatever is already on the token.
         }
       }
 
