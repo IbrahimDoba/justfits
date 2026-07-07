@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   Package,
+  Boxes,
   ShoppingCart,
   FolderTree,
   Wallet,
@@ -22,6 +23,7 @@ import { signOut, useSession } from "next-auth/react";
 const sidebarLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/finance", label: "Finance", icon: Wallet },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },

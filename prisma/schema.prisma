@@ -580,3 +580,34 @@ enum ExpenseCategory {
   FEES
   OTHER
 }
+
+// ============================================
+// INVENTORY — offline stock the finance ledger draws from
+// ============================================
+
+model InventoryItem {
+  id String @id @default(cuid())
+
+  name  String
+  brand String? // e.g. Benz, BMW, Ferrari
+  sku   String?
+
+  costPrice    Decimal? @db.Decimal(10, 2) // what it costs you
+  sellingPrice Decimal? @db.Decimal(10, 2) // default sale price
+  quantity     Int      @default(0) // units in stock
+
+  notes String?
+
+  // Optional, loose reference to a catalog product (no FK — inventory is
+  // managed independently of the storefront).
+  productId String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([productId])
+  @@map("inventory_items")
+}
