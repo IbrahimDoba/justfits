@@ -170,6 +170,7 @@ model Product {
   images        ProductImage[]
   reviews       Review[]
   wishlistItems WishlistItem[]
+  sales         Sale[]
 
   @@index([slug])
   @@index([categoryId])
@@ -505,4 +506,77 @@ model LoyaltyReward {
   @@index([code])
   @@index([isRedeemed])
   @@map("loyalty_rewards")
+}
+
+// ============================================
+// FINANCE — OFFLINE SALES & EXPENSES LEDGER
+// ============================================
+
+model Sale {
+  id String @id @default(cuid())
+
+  date         DateTime
+  customerName String
+  productText  String // Free text as kept in the sheet, e.g. "Benz/Ferrari"
+  variantText  String? // Colours/variant description, e.g. "Black/Pink & Black (AMG)"
+
+  quantity  Int     @default(1)
+  unitPrice Decimal @db.Decimal(10, 2)
+
+  deliveryFee    Decimal? @db.Decimal(10, 2)
+  deliveryPaidBy String? // Him / Her / Me / Both / Pickup / None
+
+  totalCollected Decimal  @db.Decimal(10, 2)
+  profit         Decimal? @db.Decimal(10, 2) // null = "None yet"
+
+  paymentStatus SalePaymentStatus @default(PAID)
+  notes         String?
+
+  // Optional catalog link (new sales only)
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  deductedStock Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([customerName])
+  @@index([paymentStatus])
+  @@map("sales")
+}
+
+model Expense {
+  id String @id @default(cuid())
+
+  date        DateTime
+  category    ExpenseCategory
+  description String?
+  amount      Decimal         @db.Decimal(10, 2)
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([category])
+  @@map("expenses")
+}
+
+enum SalePaymentStatus {
+  PAID
+  PARTIAL
+  PENDING
+}
+
+enum ExpenseCategory {
+  STOCK
+  PACKAGING
+  ADS
+  DELIVERY
+  LOSS
+  RENT
+  SALARIES
+  FEES
+  OTHER
 }

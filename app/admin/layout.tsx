@@ -9,6 +9,7 @@ import {
   Package,
   ShoppingCart,
   FolderTree,
+  Wallet,
   Settings,
   ChevronLeft,
   Menu,
@@ -22,6 +23,7 @@ const sidebarLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
+  { href: "/admin/finance", label: "Finance", icon: Wallet },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
