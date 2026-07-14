@@ -40,6 +40,7 @@ interface Sale {
   unitPrice: number;
   deliveryFee: number | null;
   deliveryPaidBy: string | null;
+  location: string | null;
   totalCollected: number;
   profit: number | null;
   paymentStatus: PaymentStatus;
@@ -577,7 +578,14 @@ function SalesTable({
           {sales.map((s) => (
             <tr key={s.id} className="border-b border-gray-50 hover:bg-gray-50">
               <Td className="whitespace-nowrap text-gray-600">{fmtDate(s.date)}</Td>
-              <Td className="font-medium text-gray-900">{s.customerName}</Td>
+              <Td className="font-medium text-gray-900">
+                {s.customerName}
+                {s.location && (
+                  <div className="text-[10px] font-normal text-gray-400">
+                    {s.location}
+                  </div>
+                )}
+              </Td>
               <Td className="max-w-[220px]">
                 <div className="text-gray-900">{s.productText}</div>
                 {s.variantText && (
@@ -848,6 +856,7 @@ function SaleModal({
     unitPrice: edit?.unitPrice ?? 0,
     deliveryFee: edit?.deliveryFee ?? "",
     deliveryPaidBy: edit?.deliveryPaidBy ?? "",
+    location: edit?.location ?? "",
     totalCollected: edit?.totalCollected ?? "",
     profit: edit?.profit ?? "",
     paymentStatus: edit?.paymentStatus ?? "PAID",
@@ -867,6 +876,7 @@ function SaleModal({
       unitPrice: (d.unitPrice as number) ?? f.unitPrice,
       deliveryFee: d.deliveryFee == null ? "" : (d.deliveryFee as number),
       deliveryPaidBy: (d.deliveryPaidBy as string) ?? "",
+      location: (d.location as string) ?? f.location ?? "",
       totalCollected: d.totalCollected == null ? "" : (d.totalCollected as number),
       profit: d.profit == null ? "" : (d.profit as number),
       paymentStatus: (d.paymentStatus as PaymentStatus) ?? f.paymentStatus,
@@ -963,6 +973,14 @@ function SaleModal({
             value={form.deliveryPaidBy}
             onChange={(e) => set("deliveryPaidBy", e.target.value)}
             placeholder="Him / Her / Pickup…"
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Location">
+          <input
+            value={form.location}
+            onChange={(e) => set("location", e.target.value)}
+            placeholder="e.g. Abuja, Lagos - Lekki"
             className={inputCls}
           />
         </Field>

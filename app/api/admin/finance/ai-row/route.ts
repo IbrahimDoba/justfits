@@ -35,6 +35,7 @@ Return ONLY a JSON object with these fields:
 - unitPrice: number (NGN per unit, no currency symbols or commas)
 - deliveryFee: number | null (NGN, null if not mentioned)
 - deliveryPaidBy: string | null (who paid/handled delivery: "Him"/"Her"/"Me"/"Both"/"Pickup", else null)
+- location: string | null (delivery/sale location, e.g. a city or area like "Abuja", "Lagos - Lekki", else null)
 - totalCollected: number (total NGN actually received; if not stated, compute quantity*unitPrice + (deliveryFee||0))
 - profit: number | null (null if unknown/"none yet")
 - paymentStatus: "PAID" | "PARTIAL" | "PENDING" ("PARTIAL" if half/part paid, "PENDING" if unpaid, else "PAID")

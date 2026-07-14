@@ -525,6 +525,7 @@ model Sale {
 
   deliveryFee    Decimal? @db.Decimal(10, 2)
   deliveryPaidBy String? // Him / Her / Me / Both / Pickup / None
+  location       String? // Delivery/sale location (new records only)
 
   totalCollected Decimal  @db.Decimal(10, 2)
   profit         Decimal? @db.Decimal(10, 2) // null = "None yet"

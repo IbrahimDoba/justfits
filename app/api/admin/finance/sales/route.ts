@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
           unitPrice,
           deliveryFee,
           deliveryPaidBy: body.deliveryPaidBy?.trim() || null,
+          location: body.location?.trim() || null,
           totalCollected,
           profit,
           paymentStatus,

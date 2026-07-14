@@ -37,6 +37,8 @@ export async function PATCH(
           : Number(body.deliveryFee);
     if (body.deliveryPaidBy !== undefined)
       data.deliveryPaidBy = body.deliveryPaidBy?.trim() || null;
+    if (body.location !== undefined)
+      data.location = body.location?.trim() || null;
     if (body.totalCollected !== undefined)
       data.totalCollected = Number(body.totalCollected);
     if (body.profit !== undefined)
