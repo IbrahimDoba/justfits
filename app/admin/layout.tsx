@@ -11,6 +11,7 @@ import {
   ShoppingCart,
   FolderTree,
   Wallet,
+  StickyNote,
   Settings,
   ChevronLeft,
   Menu,
@@ -26,6 +27,7 @@ const sidebarLinks = [
   { href: "/admin/inventory", label: "Inventory", icon: Boxes },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/finance", label: "Finance", icon: Wallet },
+  { href: "/admin/notes", label: "Notes", icon: StickyNote },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

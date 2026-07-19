@@ -612,3 +612,26 @@ model InventoryItem {
   @@index([productId])
   @@map("inventory_items")
 }
+
+// ============================================
+// ADMIN NOTES — free-form ledger for important notes
+// ============================================
+
+model AdminNote {
+  id String @id @default(cuid())
+
+  title   String?
+  content String  @db.Text
+
+  pinned Boolean @default(false)
+
+  authorName  String? // who wrote it (snapshot of session name/email)
+  authorEmail String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([pinned])
+  @@index([updatedAt])
+  @@map("admin_notes")
+}
