@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin-guard";
+import { prisma } from "@/lib/db/prisma";
 import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -24,23 +25,43 @@ export async function POST(request: NextRequest) {
 
     const today = new Date().toISOString().slice(0, 10);
 
-    const salePrompt = `You convert a plain-English description of an OFFLINE sale for JUSTFITS (a Nigerian car-themed caps brand, currency NGN) into a JSON row.
+    // For sales, give the AI the current inventory so it can SELECT items.
+    let inventoryList = "";
+    if (kind === "sale") {
+      const inv = await prisma.inventoryItem.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, size: true, sellingPrice: true },
+        orderBy: { name: "asc" },
+      });
+      inventoryList = inv
+        .map(
+          (i) =>
+            `- id:${i.id} | ${i.name}${i.size ? ` [${i.size}]` : ""} | price:${Number(
+              i.sellingPrice || 0
+            )}`
+        )
+        .join("\n");
+    }
+
+    const salePrompt = `You convert a plain-English description of an OFFLINE sale for JUSTFITS (a Nigerian car-themed caps/shirts brand, currency NGN) into a JSON row.
 Today is ${today}. Resolve relative dates (e.g. "yesterday", "last friday") to an ISO date (YYYY-MM-DD). If no date is given, use today.
+
+INVENTORY (match items the customer bought to these; use the exact id; for shirts match the SIZE too):
+${inventoryList || "(none)"}
+
 Return ONLY a JSON object with these fields:
 - date: string (YYYY-MM-DD)
 - customerName: string
-- productText: string (the brand/model, e.g. "Benz", "Benz/Ferrari" if multiple)
-- variantText: string | null (colours/variant description if mentioned, else null)
-- quantity: number (integer, default 1)
-- unitPrice: number (NGN per unit, no currency symbols or commas)
+- items: array of objects for each product sold, each: { inventoryItemId: string | null (the matching inventory id, or null if no good match), name: string (the item name), size: string | null, quantity: number, unitPrice: number (price sold per unit in NGN — default to the inventory price unless a different price is stated) }. Return [] if no specific product is identifiable.
+- variantText: string | null (extra colour/variant note if any, else null)
 - deliveryFee: number | null (NGN, null if not mentioned)
 - deliveryPaidBy: string | null (who paid/handled delivery: "Him"/"Her"/"Me"/"Both"/"Pickup", else null)
-- location: string | null (delivery/sale location, e.g. a city or area like "Abuja", "Lagos - Lekki", else null)
-- totalCollected: number (total NGN actually received; if not stated, compute quantity*unitPrice + (deliveryFee||0))
+- location: string | null (delivery/sale location, e.g. "Abuja", "Lagos - Lekki", else null)
+- totalCollected: number (total NGN actually received; if not stated, compute sum(items qty*unitPrice) + (deliveryFee||0))
 - profit: number | null (null if unknown/"none yet")
 - paymentStatus: "PAID" | "PARTIAL" | "PENDING" ("PARTIAL" if half/part paid, "PENDING" if unpaid, else "PAID")
 - notes: string | null (any extra context, else null)
-Interpret Nigerian shorthand like "26k" = 26000. Never invent data that isn't implied.`;
+Interpret Nigerian shorthand like "26k" = 26000. Match items to the inventory by name and size as closely as possible. Never invent data that isn't implied.`;
 
     const expensePrompt = `You convert a plain-English description of a business EXPENSE for JUSTFITS (currency NGN) into a JSON row.
 Today is ${today}. Resolve relative dates to an ISO date (YYYY-MM-DD). If no date is given, use today.

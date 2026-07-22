@@ -35,7 +35,10 @@ export async function GET(request: NextRequest) {
     const sales = await prisma.sale.findMany({
       where,
       orderBy: { date: "desc" },
-      include: { product: { select: { id: true, name: true } } },
+      include: {
+        product: { select: { id: true, name: true } },
+        items: true,
+      },
     });
 
     return NextResponse.json({
@@ -45,6 +48,10 @@ export async function GET(request: NextRequest) {
         deliveryFee: s.deliveryFee === null ? null : Number(s.deliveryFee),
         totalCollected: Number(s.totalCollected),
         profit: s.profit === null ? null : Number(s.profit),
+        items: s.items.map((it) => ({
+          ...it,
+          unitPrice: Number(it.unitPrice),
+        })),
       })),
     });
   } catch (error) {
@@ -67,27 +74,69 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const customerName = String(body.customerName || "").trim();
-    const productText = String(body.productText || "").trim();
+
+    // Parse optional itemised line items (inventory picks).
+    type LineItem = {
+      inventoryItemId: string | null;
+      name: string;
+      size: string | null;
+      quantity: number;
+      unitPrice: number;
+    };
+    const rawItems: unknown[] = Array.isArray(body.items) ? body.items : [];
+    const items: LineItem[] = rawItems
+      .map((raw) => {
+        const it = raw as Record<string, unknown>;
+        return {
+          inventoryItemId: it.inventoryItemId
+            ? String(it.inventoryItemId)
+            : null,
+          name: String(it.name || "").trim(),
+          size: it.size ? String(it.size).trim() : null,
+          quantity: Math.max(1, parseInt(String(it.quantity), 10) || 1),
+          unitPrice: Number(it.unitPrice) || 0,
+        };
+      })
+      .filter((it) => it.name);
+
+    // productText is derived from items when itemised, else required manually.
+    const productText =
+      String(body.productText || "").trim() ||
+      items.map((i) => (i.size ? `${i.name} (${i.size})` : i.name)).join(", ");
+
     if (!customerName || !productText) {
       return NextResponse.json(
-        { error: "customerName and productText are required" },
+        { error: "customerName and at least one item (or product) are required" },
         { status: 400 }
       );
     }
 
-    const quantity = Math.max(1, parseInt(body.quantity, 10) || 1);
-    const unitPrice = Number(body.unitPrice) || 0;
+    const itemsSubtotal = items.reduce(
+      (s, i) => s + i.quantity * i.unitPrice,
+      0
+    );
+    const itemsQty = items.reduce((s, i) => s + i.quantity, 0);
+
+    const quantity = items.length
+      ? itemsQty
+      : Math.max(1, parseInt(body.quantity, 10) || 1);
+    const unitPrice = items.length
+      ? items.length === 1
+        ? items[0].unitPrice
+        : 0
+      : Number(body.unitPrice) || 0;
     const deliveryFee =
       body.deliveryFee === null ||
       body.deliveryFee === undefined ||
       body.deliveryFee === ""
         ? null
         : Number(body.deliveryFee);
+    const baseSubtotal = items.length ? itemsSubtotal : unitPrice * quantity;
     const totalCollected =
       body.totalCollected === null ||
       body.totalCollected === undefined ||
       body.totalCollected === ""
-        ? unitPrice * quantity + (deliveryFee || 0)
+        ? baseSubtotal + (deliveryFee || 0)
         : Number(body.totalCollected);
     const profit =
       body.profit === null || body.profit === undefined || body.profit === ""
@@ -97,7 +146,8 @@ export async function POST(request: NextRequest) {
       ? body.paymentStatus
       : "PAID";
 
-    const deductStock = Boolean(body.deductStock) && Boolean(body.productId);
+    // Deduct inventory when items are linked (default on), unless disabled.
+    const deductStock = body.deductStock !== false && items.length > 0;
 
     const sale = await prisma.$transaction(async (tx) => {
       const created = await tx.sale.create({
@@ -117,11 +167,39 @@ export async function POST(request: NextRequest) {
           notes: body.notes?.trim() || null,
           productId: body.productId || null,
           deductedStock: deductStock,
+          items: items.length
+            ? {
+                create: items.map((i) => ({
+                  inventoryItemId: i.inventoryItemId,
+                  name: i.name,
+                  size: i.size,
+                  quantity: i.quantity,
+                  unitPrice: i.unitPrice,
+                })),
+              }
+            : undefined,
         },
+        include: { items: true },
       });
 
-      // Optional inventory deduction for NEW sales linked to a catalog variant
-      if (deductStock && body.variantId) {
+      // Atomic, clamp-at-0 inventory deduction for each linked item.
+      if (deductStock) {
+        for (const i of items) {
+          if (!i.inventoryItemId) continue;
+          const inv = await tx.inventoryItem.findUnique({
+            where: { id: i.inventoryItemId },
+            select: { quantity: true },
+          });
+          if (!inv) continue;
+          await tx.inventoryItem.update({
+            where: { id: i.inventoryItemId },
+            data: { quantity: Math.max(0, inv.quantity - i.quantity) },
+          });
+        }
+      }
+
+      // Legacy path: deduct a linked catalog variant if provided.
+      if (body.deductStock && body.variantId) {
         await tx.productVariant.update({
           where: { id: body.variantId },
           data: { stockQuantity: { decrement: quantity } },

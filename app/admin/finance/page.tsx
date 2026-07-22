@@ -45,6 +45,24 @@ interface Sale {
   profit: number | null;
   paymentStatus: PaymentStatus;
   notes: string | null;
+  items?: SaleLineItem[];
+}
+
+interface SaleLineItem {
+  id?: string;
+  inventoryItemId: string | null;
+  name: string;
+  size: string | null;
+  quantity: number;
+  unitPrice: number;
+}
+
+interface InventoryOption {
+  id: string;
+  name: string;
+  size: string | null;
+  sellingPrice: number | null;
+  quantity: number;
 }
 
 interface Expense {
@@ -865,6 +883,49 @@ function SaleModal({
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Inventory item picker (create mode). Editing an itemised sale shows its
+  // items read-only, since stock was already deducted at creation.
+  const [inventory, setInventory] = useState<InventoryOption[]>([]);
+  const [items, setItems] = useState<SaleLineItem[]>([]);
+
+  useEffect(() => {
+    if (edit) return;
+    fetch("/api/admin/inventory")
+      .then((r) => r.json())
+      .then((d) => setInventory(Array.isArray(d.items) ? d.items : []))
+      .catch(() => setInventory([]));
+  }, [edit]);
+
+  const itemsSubtotal = items.reduce(
+    (s, i) => s + i.quantity * i.unitPrice,
+    0
+  );
+
+  const addItem = () =>
+    setItems((prev) => [
+      ...prev,
+      { inventoryItemId: null, name: "", size: null, quantity: 1, unitPrice: 0 },
+    ]);
+  const removeItem = (idx: number) =>
+    setItems((prev) => prev.filter((_, i) => i !== idx));
+  const setItem = (idx: number, patch: Partial<SaleLineItem>) =>
+    setItems((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, ...patch } : it))
+    );
+  const pickInventory = (idx: number, invId: string) => {
+    const inv = inventory.find((v) => v.id === invId);
+    if (!inv) {
+      setItem(idx, { inventoryItemId: null });
+      return;
+    }
+    setItem(idx, {
+      inventoryItemId: inv.id,
+      name: inv.name,
+      size: inv.size,
+      unitPrice: inv.sellingPrice ?? 0,
+    });
+  };
+
   const applyDraft = (d: Record<string, unknown>) => {
     setForm((f) => ({
       ...f,
@@ -872,8 +933,6 @@ function SaleModal({
       customerName: (d.customerName as string) ?? f.customerName,
       productText: (d.productText as string) ?? f.productText,
       variantText: (d.variantText as string) ?? f.variantText ?? "",
-      quantity: (d.quantity as number) ?? f.quantity,
-      unitPrice: (d.unitPrice as number) ?? f.unitPrice,
       deliveryFee: d.deliveryFee == null ? "" : (d.deliveryFee as number),
       deliveryPaidBy: (d.deliveryPaidBy as string) ?? "",
       location: (d.location as string) ?? f.location ?? "",
@@ -882,11 +941,34 @@ function SaleModal({
       paymentStatus: (d.paymentStatus as PaymentStatus) ?? f.paymentStatus,
       notes: (d.notes as string) ?? "",
     }));
+    // AI-selected items
+    const draftItems = Array.isArray(d.items) ? d.items : [];
+    if (draftItems.length) {
+      setItems(
+        draftItems.map((raw) => {
+          const it = raw as Record<string, unknown>;
+          return {
+            inventoryItemId: it.inventoryItemId
+              ? String(it.inventoryItemId)
+              : null,
+            name: String(it.name || ""),
+            size: it.size ? String(it.size) : null,
+            quantity: Number(it.quantity) || 1,
+            unitPrice: Number(it.unitPrice) || 0,
+          };
+        })
+      );
+    }
   };
 
   const submit = async () => {
-    if (!form.customerName.trim() || !form.productText.trim()) {
-      alert("Customer and product are required.");
+    const cleanItems = items.filter((i) => i.name.trim() || i.inventoryItemId);
+    if (!form.customerName.trim()) {
+      alert("Customer is required.");
+      return;
+    }
+    if (!edit && cleanItems.length === 0 && !form.productText.trim()) {
+      alert("Add at least one item, or type a product.");
       return;
     }
     setSaving(true);
@@ -897,7 +979,9 @@ function SaleModal({
       const res = await fetch(url, {
         method: edit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(
+          edit ? form : { ...form, items: cleanItems }
+        ),
       });
       if (!res.ok) throw new Error("Save failed");
       onSaved();
@@ -908,9 +992,110 @@ function SaleModal({
     }
   };
 
+  const hasItems = items.length > 0;
+
   return (
     <ModalShell title={edit ? "Edit sale" : "Add sale"} onClose={onClose}>
       {!edit && <AiCompose kind="sale" onDraft={applyDraft} />}
+
+      {/* Items sold from inventory (create mode) */}
+      {!edit && (
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-gray-700">
+              Items sold{" "}
+              <span className="font-normal text-gray-400">
+                (deducted from stock)
+              </span>
+            </span>
+            <button
+              onClick={addItem}
+              className="flex items-center gap-1 text-xs font-medium text-black hover:underline"
+            >
+              <Plus size={13} /> Add item
+            </button>
+          </div>
+          {items.length === 0 ? (
+            <p className="text-xs text-gray-400">
+              No items selected. Add items from inventory, or just type a product
+              below for a manual sale.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {items.map((it, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <select
+                    value={it.inventoryItemId ?? ""}
+                    onChange={(e) => pickInventory(idx, e.target.value)}
+                    className={`${inputCls} flex-1`}
+                  >
+                    <option value="">
+                      {it.name ? `${it.name}${it.size ? ` (${it.size})` : ""}` : "Select item…"}
+                    </option>
+                    {inventory.map((inv) => (
+                      <option key={inv.id} value={inv.id}>
+                        {inv.name}
+                        {inv.size ? ` - ${inv.size}` : ""} ({inv.quantity} in stock)
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    value={it.quantity}
+                    onChange={(e) =>
+                      setItem(idx, { quantity: Number(e.target.value) })
+                    }
+                    title="Quantity"
+                    className={`${inputCls} w-16 text-center`}
+                  />
+                  <input
+                    type="number"
+                    value={it.unitPrice}
+                    onChange={(e) =>
+                      setItem(idx, { unitPrice: Number(e.target.value) })
+                    }
+                    title="Sold price each (₦)"
+                    className={`${inputCls} w-24`}
+                  />
+                  <button
+                    onClick={() => removeItem(idx)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded shrink-0"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              <div className="text-right text-xs text-gray-600">
+                Subtotal:{" "}
+                <span className="font-semibold">{naira(itemsSubtotal)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Existing items on an itemised sale (edit mode, read-only) */}
+      {edit?.items && edit.items.length > 0 && (
+        <div className="mb-4 p-3 bg-gray-50 border border-gray-100 rounded-lg">
+          <span className="text-xs font-semibold text-gray-700">Items</span>
+          <ul className="mt-1 space-y-0.5">
+            {edit.items.map((it, i) => (
+              <li
+                key={i}
+                className="text-xs text-gray-600 flex justify-between gap-2"
+              >
+                <span>
+                  {it.name}
+                  {it.size ? ` (${it.size})` : ""} × {it.quantity}
+                </span>
+                <span>{naira(it.unitPrice)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <Field label="Date">
           <input
@@ -927,38 +1112,42 @@ function SaleModal({
             className={inputCls}
           />
         </Field>
-        <Field label="Product">
-          <input
-            value={form.productText}
-            onChange={(e) => set("productText", e.target.value)}
-            placeholder="e.g. Benz / Ferrari"
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Variant / colour">
-          <input
-            value={form.variantText}
-            onChange={(e) => set("variantText", e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Quantity">
-          <input
-            type="number"
-            min={1}
-            value={form.quantity}
-            onChange={(e) => set("quantity", Number(e.target.value))}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Unit price (₦)">
-          <input
-            type="number"
-            value={form.unitPrice}
-            onChange={(e) => set("unitPrice", Number(e.target.value))}
-            className={inputCls}
-          />
-        </Field>
+        {!hasItems && (
+          <>
+            <Field label="Product">
+              <input
+                value={form.productText}
+                onChange={(e) => set("productText", e.target.value)}
+                placeholder="e.g. Benz / Ferrari"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Variant / colour">
+              <input
+                value={form.variantText}
+                onChange={(e) => set("variantText", e.target.value)}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Quantity">
+              <input
+                type="number"
+                min={1}
+                value={form.quantity}
+                onChange={(e) => set("quantity", Number(e.target.value))}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Unit price (₦)">
+              <input
+                type="number"
+                value={form.unitPrice}
+                onChange={(e) => set("unitPrice", Number(e.target.value))}
+                className={inputCls}
+              />
+            </Field>
+          </>
+        )}
         <Field label="Delivery fee (₦)">
           <input
             type="number"

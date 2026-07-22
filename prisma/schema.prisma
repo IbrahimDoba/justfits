@@ -538,6 +538,9 @@ model Sale {
   product       Product? @relation(fields: [productId], references: [id])
   deductedStock Boolean  @default(false)
 
+  // Itemised line items (new sales that pick from inventory)
+  items SaleItem[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -545,6 +548,27 @@ model Sale {
   @@index([customerName])
   @@index([paymentStatus])
   @@map("sales")
+}
+
+model SaleItem {
+  id     String @id @default(cuid())
+  saleId String
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  // Loose link to inventory (item may later be renamed/removed); name/size are
+  // snapshotted so the sale record stays accurate regardless.
+  inventoryItemId String?
+  name            String
+  size            String?
+
+  quantity  Int     @default(1)
+  unitPrice Decimal @db.Decimal(10, 2) // price this item was sold at
+
+  createdAt DateTime @default(now())
+
+  @@index([saleId])
+  @@index([inventoryItemId])
+  @@map("sale_items")
 }
 
 model Expense {
