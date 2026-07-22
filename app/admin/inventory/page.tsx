@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Boxes,
@@ -15,6 +15,8 @@ import {
   Package,
   Layers,
   Wallet,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 
 interface InventoryItem {
@@ -45,9 +47,20 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [importing, setImporting] = useState(false);
-  const [modal, setModal] = useState<{ open: boolean; edit?: InventoryItem }>({
-    open: false,
-  });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [modal, setModal] = useState<{
+    open: boolean;
+    edit?: InventoryItem;
+    preset?: Partial<InventoryItem>;
+  }>({ open: false });
+
+  const toggleGroup = (name: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +91,37 @@ export default function InventoryPage() {
     );
   }, [items, search]);
 
+  // Group items that share a name (e.g. a shirt across sizes) into one
+  // expandable group; single one-size items (caps) render as plain rows.
+  const groups = useMemo(() => {
+    const map = new Map<string, InventoryItem[]>();
+    for (const i of filtered) {
+      const arr = map.get(i.name) ?? [];
+      arr.push(i);
+      map.set(i.name, arr);
+    }
+    return Array.from(map.entries()).map(([name, groupItems]) => {
+      const totalQty = groupItems.reduce((s, i) => s + i.quantity, 0);
+      const totalValue = groupItems.reduce(
+        (s, i) => s + i.quantity * (i.sellingPrice ?? i.costPrice ?? 0),
+        0
+      );
+      const prices = Array.from(
+        new Set(groupItems.map((i) => i.sellingPrice ?? 0))
+      );
+      const grouped = groupItems.length > 1 || groupItems[0].size != null;
+      return {
+        name,
+        items: groupItems,
+        brand: groupItems[0].brand,
+        totalQty,
+        totalValue,
+        prices,
+        grouped,
+      };
+    });
+  }, [filtered]);
+
   const stats = useMemo(() => {
     const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
     const stockValue = items.reduce(
@@ -85,7 +129,8 @@ export default function InventoryPage() {
       0
     );
     const outOfStock = items.filter((i) => i.quantity <= 0).length;
-    return { count: items.length, totalUnits, stockValue, outOfStock };
+    const products = new Set(items.map((i) => i.name)).size;
+    return { products, lines: items.length, totalUnits, stockValue, outOfStock };
   }, [items]);
 
   // Optimistic atomic add/deduct (clamped at 0 on the server).
@@ -173,7 +218,7 @@ export default function InventoryPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Items" value={String(stats.count)} icon={<Package className="text-blue-600" size={20} />} />
+        <StatCard label="Products" value={String(stats.products)} sub={`${stats.lines} stock lines`} icon={<Package className="text-blue-600" size={20} />} />
         <StatCard label="Total units" value={String(stats.totalUnits)} icon={<Layers className="text-purple-600" size={20} />} />
         <StatCard label="Stock value" value={naira(stats.stockValue)} sub="at selling price" icon={<Wallet className="text-green-600" size={20} />} />
         <StatCard label="Out of stock" value={String(stats.outOfStock)} icon={<Boxes className="text-amber-600" size={20} />} />
@@ -214,88 +259,154 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((i) => (
-                <tr
-                  key={i.id}
-                  className={`border-b border-gray-50 hover:bg-gray-50 ${
-                    !i.isActive ? "opacity-50" : ""
-                  }`}
-                >
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {i.name}
-                    {!i.isActive && (
-                      <span className="ml-2 text-[10px] uppercase text-gray-400">
-                        inactive
-                      </span>
+              {groups.map((g) => {
+                // Single one-size item (cap): plain row.
+                if (!g.grouped) {
+                  const i = g.items[0];
+                  return (
+                    <tr
+                      key={i.id}
+                      className={`border-b border-gray-50 hover:bg-gray-50 ${
+                        !i.isActive ? "opacity-50" : ""
+                      }`}
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        {i.name}
+                        {!i.isActive && (
+                          <span className="ml-2 text-[10px] uppercase text-gray-400">
+                            inactive
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {i.brand || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-400">—</td>
+                      <td className="px-4 py-3 text-right text-gray-600">
+                        {naira(i.costPrice)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-900">
+                        {naira(i.sellingPrice)}
+                      </td>
+                      <StockCell item={i} onAdjust={adjust} />
+                      <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
+                        {naira(i.quantity * (i.sellingPrice ?? i.costPrice ?? 0))}
+                      </td>
+                      <ActionsCell
+                        onEdit={() => setModal({ open: true, edit: i })}
+                        onDelete={() => remove(i.id)}
+                      />
+                    </tr>
+                  );
+                }
+
+                // Grouped product (e.g. shirt across sizes): expandable.
+                const isOpen = expanded.has(g.name);
+                const priceLabel =
+                  g.prices.length === 1
+                    ? naira(g.prices[0])
+                    : `${naira(Math.min(...g.prices))}–${naira(
+                        Math.max(...g.prices)
+                      )}`;
+                return (
+                  <Fragment key={g.name}>
+                    <tr
+                      className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer bg-gray-50/40"
+                      onClick={() => toggleGroup(g.name)}
+                    >
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        <div className="flex items-center gap-1.5">
+                          {isOpen ? (
+                            <ChevronDown size={15} className="text-gray-400" />
+                          ) : (
+                            <ChevronRight size={15} className="text-gray-400" />
+                          )}
+                          {g.name}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {g.brand || "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-block px-2 py-0.5 rounded-full bg-gray-200 text-xs font-medium text-gray-700">
+                          {g.items.length} size{g.items.length === 1 ? "" : "s"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-gray-400">—</td>
+                      <td className="px-4 py-3 text-right text-gray-900">
+                        {priceLabel}
+                      </td>
+                      <td className="px-4 py-3 text-center font-semibold tabular-nums text-gray-900">
+                        {g.totalQty}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-gray-800 tabular-nums">
+                        {naira(g.totalValue)}
+                      </td>
+                      <td className="px-4 py-3" />
+                    </tr>
+
+                    {isOpen &&
+                      g.items.map((i) => (
+                        <tr
+                          key={i.id}
+                          className={`border-b border-gray-50 bg-white ${
+                            !i.isActive ? "opacity-50" : ""
+                          }`}
+                        >
+                          <td className="pl-10 pr-4 py-2.5 text-gray-500 text-xs">
+                            ↳ {i.name}
+                          </td>
+                          <td className="px-4 py-2.5 text-gray-500 text-xs">
+                            {i.brand || ""}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <span className="inline-block px-2 py-0.5 rounded bg-gray-100 text-xs font-medium text-gray-700">
+                              {i.size || "—"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-gray-600">
+                            {naira(i.costPrice)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-gray-900">
+                            {naira(i.sellingPrice)}
+                          </td>
+                          <StockCell item={i} onAdjust={adjust} compact />
+                          <td className="px-4 py-2.5 text-right text-gray-600 tabular-nums">
+                            {naira(
+                              i.quantity * (i.sellingPrice ?? i.costPrice ?? 0)
+                            )}
+                          </td>
+                          <ActionsCell
+                            onEdit={() => setModal({ open: true, edit: i })}
+                            onDelete={() => remove(i.id)}
+                          />
+                        </tr>
+                      ))}
+
+                    {isOpen && (
+                      <tr className="border-b border-gray-100 bg-white">
+                        <td colSpan={8} className="pl-10 pr-4 py-2">
+                          <button
+                            onClick={() =>
+                              setModal({
+                                open: true,
+                                preset: {
+                                  name: g.name,
+                                  brand: g.brand,
+                                  sellingPrice: g.prices[0] || null,
+                                },
+                              })
+                            }
+                            className="text-xs font-medium text-gray-500 hover:text-gray-900 flex items-center gap-1"
+                          >
+                            <Plus size={13} /> Add size
+                          </button>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{i.brand || "—"}</td>
-                  <td className="px-4 py-3">
-                    {i.size ? (
-                      <span className="inline-block px-2 py-0.5 rounded bg-gray-100 text-xs font-medium text-gray-700">
-                        {i.size}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600">
-                    {naira(i.costPrice)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-900">
-                    {naira(i.sellingPrice)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => adjust(i, -1)}
-                        disabled={i.quantity <= 0}
-                        title="Deduct 1"
-                        className="w-6 h-6 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <Minus size={13} />
-                      </button>
-                      <span
-                        className={`w-8 text-center font-semibold tabular-nums ${
-                          i.quantity <= 0
-                            ? "text-red-600"
-                            : i.quantity <= 5
-                              ? "text-amber-600"
-                              : "text-gray-900"
-                        }`}
-                      >
-                        {i.quantity}
-                      </span>
-                      <button
-                        onClick={() => adjust(i, 1)}
-                        title="Add 1"
-                        className="w-6 h-6 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                      >
-                        <Plus size={13} />
-                      </button>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
-                    {naira(i.quantity * (i.sellingPrice ?? i.costPrice ?? 0))}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 justify-end">
-                      <button
-                        onClick={() => setModal({ open: true, edit: i })}
-                        className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => remove(i.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -304,6 +415,7 @@ export default function InventoryPage() {
       {modal.open && (
         <ItemModal
           edit={modal.edit}
+          preset={modal.preset}
           onClose={() => setModal({ open: false })}
           onSaved={() => {
             setModal({ open: false });
@@ -312,6 +424,76 @@ export default function InventoryPage() {
         />
       )}
     </div>
+  );
+}
+
+function StockCell({
+  item,
+  onAdjust,
+  compact,
+}: {
+  item: InventoryItem;
+  onAdjust: (i: InventoryItem, delta: number) => void;
+  compact?: boolean;
+}) {
+  return (
+    <td className={`px-4 ${compact ? "py-2.5" : "py-3"}`}>
+      <div className="flex items-center justify-center gap-1.5">
+        <button
+          onClick={() => onAdjust(item, -1)}
+          disabled={item.quantity <= 0}
+          title="Deduct 1"
+          className="w-6 h-6 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <Minus size={13} />
+        </button>
+        <span
+          className={`w-8 text-center font-semibold tabular-nums ${
+            item.quantity <= 0
+              ? "text-red-600"
+              : item.quantity <= 5
+                ? "text-amber-600"
+                : "text-gray-900"
+          }`}
+        >
+          {item.quantity}
+        </span>
+        <button
+          onClick={() => onAdjust(item, 1)}
+          title="Add 1"
+          className="w-6 h-6 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+        >
+          <Plus size={13} />
+        </button>
+      </div>
+    </td>
+  );
+}
+
+function ActionsCell({
+  onEdit,
+  onDelete,
+}: {
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <td className="px-4 py-3">
+      <div className="flex items-center gap-1 justify-end">
+        <button
+          onClick={onEdit}
+          className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded"
+        >
+          <Pencil size={15} />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+    </td>
   );
 }
 
@@ -362,20 +544,22 @@ function Field({
 
 function ItemModal({
   edit,
+  preset,
   onClose,
   onSaved,
 }: {
   edit?: InventoryItem;
+  preset?: Partial<InventoryItem>;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState({
-    name: edit?.name ?? "",
-    brand: edit?.brand ?? "",
-    size: edit?.size ?? "",
+    name: edit?.name ?? preset?.name ?? "",
+    brand: edit?.brand ?? preset?.brand ?? "",
+    size: edit?.size ?? preset?.size ?? "",
     sku: edit?.sku ?? "",
     costPrice: edit?.costPrice ?? "",
-    sellingPrice: edit?.sellingPrice ?? "",
+    sellingPrice: edit?.sellingPrice ?? preset?.sellingPrice ?? "",
     quantity: edit?.quantity ?? 0,
     notes: edit?.notes ?? "",
     isActive: edit?.isActive ?? true,
