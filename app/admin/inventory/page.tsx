@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import {
   Boxes,
   Plus,
+  Minus,
   Search,
   Pencil,
   Trash2,
@@ -20,6 +21,7 @@ interface InventoryItem {
   id: string;
   name: string;
   brand: string | null;
+  size: string | null;
   sku: string | null;
   costPrice: number | null;
   sellingPrice: number | null;
@@ -71,6 +73,7 @@ export default function InventoryPage() {
       (i) =>
         i.name.toLowerCase().includes(q) ||
         (i.brand || "").toLowerCase().includes(q) ||
+        (i.size || "").toLowerCase().includes(q) ||
         (i.sku || "").toLowerCase().includes(q)
     );
   }, [items, search]);
@@ -78,12 +81,41 @@ export default function InventoryPage() {
   const stats = useMemo(() => {
     const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
     const stockValue = items.reduce(
-      (s, i) => s + i.quantity * (i.costPrice ?? i.sellingPrice ?? 0),
+      (s, i) => s + i.quantity * (i.sellingPrice ?? i.costPrice ?? 0),
       0
     );
     const outOfStock = items.filter((i) => i.quantity <= 0).length;
     return { count: items.length, totalUnits, stockValue, outOfStock };
   }, [items]);
+
+  // Optimistic atomic add/deduct (clamped at 0 on the server).
+  const adjust = async (item: InventoryItem, delta: number) => {
+    if (item.quantity + delta < 0) return;
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === item.id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i
+      )
+    );
+    try {
+      const res = await fetch(`/api/admin/inventory/${item.id}/adjust`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ delta }),
+      });
+      const data = await res.json();
+      if (res.ok && data.item) {
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id ? { ...i, quantity: data.item.quantity } : i
+          )
+        );
+      } else {
+        load();
+      }
+    } catch {
+      load();
+    }
+  };
 
   const importFromProducts = async () => {
     setImporting(true);
@@ -143,7 +175,7 @@ export default function InventoryPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="Items" value={String(stats.count)} icon={<Package className="text-blue-600" size={20} />} />
         <StatCard label="Total units" value={String(stats.totalUnits)} icon={<Layers className="text-purple-600" size={20} />} />
-        <StatCard label="Stock value" value={naira(stats.stockValue)} sub="at cost (or price)" icon={<Wallet className="text-green-600" size={20} />} />
+        <StatCard label="Stock value" value={naira(stats.stockValue)} sub="at selling price" icon={<Wallet className="text-green-600" size={20} />} />
         <StatCard label="Out of stock" value={String(stats.outOfStock)} icon={<Boxes className="text-amber-600" size={20} />} />
       </div>
 
@@ -173,10 +205,11 @@ export default function InventoryPage() {
               <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
                 <th className="px-4 py-3 font-medium">Item</th>
                 <th className="px-4 py-3 font-medium">Brand</th>
-                <th className="px-4 py-3 font-medium">SKU</th>
+                <th className="px-4 py-3 font-medium">Size</th>
                 <th className="px-4 py-3 font-medium text-right">Cost</th>
                 <th className="px-4 py-3 font-medium text-right">Price</th>
-                <th className="px-4 py-3 font-medium text-right">Qty</th>
+                <th className="px-4 py-3 font-medium text-center">Stock</th>
+                <th className="px-4 py-3 font-medium text-right">Value</th>
                 <th className="px-4 py-3 font-medium" />
               </tr>
             </thead>
@@ -197,25 +230,53 @@ export default function InventoryPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{i.brand || "—"}</td>
-                  <td className="px-4 py-3 text-gray-500">{i.sku || "—"}</td>
+                  <td className="px-4 py-3">
+                    {i.size ? (
+                      <span className="inline-block px-2 py-0.5 rounded bg-gray-100 text-xs font-medium text-gray-700">
+                        {i.size}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right text-gray-600">
                     {naira(i.costPrice)}
                   </td>
                   <td className="px-4 py-3 text-right text-gray-900">
                     {naira(i.sellingPrice)}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <span
-                      className={`font-medium ${
-                        i.quantity <= 0
-                          ? "text-red-600"
-                          : i.quantity <= 5
-                            ? "text-amber-600"
-                            : "text-gray-900"
-                      }`}
-                    >
-                      {i.quantity}
-                    </span>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button
+                        onClick={() => adjust(i, -1)}
+                        disabled={i.quantity <= 0}
+                        title="Deduct 1"
+                        className="w-6 h-6 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <span
+                        className={`w-8 text-center font-semibold tabular-nums ${
+                          i.quantity <= 0
+                            ? "text-red-600"
+                            : i.quantity <= 5
+                              ? "text-amber-600"
+                              : "text-gray-900"
+                        }`}
+                      >
+                        {i.quantity}
+                      </span>
+                      <button
+                        onClick={() => adjust(i, 1)}
+                        title="Add 1"
+                        className="w-6 h-6 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
+                    {naira(i.quantity * (i.sellingPrice ?? i.costPrice ?? 0))}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
@@ -311,6 +372,7 @@ function ItemModal({
   const [form, setForm] = useState({
     name: edit?.name ?? "",
     brand: edit?.brand ?? "",
+    size: edit?.size ?? "",
     sku: edit?.sku ?? "",
     costPrice: edit?.costPrice ?? "",
     sellingPrice: edit?.sellingPrice ?? "",
@@ -379,6 +441,14 @@ function ItemModal({
                 value={form.brand}
                 onChange={(e) => set("brand", e.target.value)}
                 placeholder="Benz / BMW / Ferrari"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Size">
+              <input
+                value={form.size}
+                onChange={(e) => set("size", e.target.value)}
+                placeholder="L / XL / XXL (blank for caps)"
                 className={inputCls}
               />
             </Field>

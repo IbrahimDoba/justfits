@@ -591,6 +591,7 @@ model InventoryItem {
 
   name  String
   brand String? // e.g. Benz, BMW, Ferrari
+  size  String? // e.g. L, XL, XXL, 3XL for shirts; null for one-size caps
   sku   String?
 
   costPrice    Decimal? @db.Decimal(10, 2) // what it costs you

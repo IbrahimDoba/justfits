@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
         { brand: { contains: search, mode: "insensitive" } },
+        { size: { contains: search, mode: "insensitive" } },
         { sku: { contains: search, mode: "insensitive" } },
       ];
     }
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         brand: body.brand?.trim() || null,
+        size: body.size?.trim() || null,
         sku: body.sku?.trim() || null,
         costPrice: num(body.costPrice),
         sellingPrice: num(body.sellingPrice),
