@@ -5,6 +5,41 @@ import type { Prisma } from "@prisma/client";
 
 const PAYMENT_STATUSES = ["PAID", "PARTIAL", "PENDING"] as const;
 
+// GET /api/admin/finance/sales/[id] - single sale (for the invoice view)
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await requireAdmin();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { id } = await params;
+    const sale = await prisma.sale.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+    if (!sale) {
+      return NextResponse.json({ error: "Sale not found" }, { status: 404 });
+    }
+    return NextResponse.json({
+      sale: {
+        ...sale,
+        unitPrice: Number(sale.unitPrice),
+        deliveryFee: sale.deliveryFee === null ? null : Number(sale.deliveryFee),
+        totalCollected: Number(sale.totalCollected),
+        profit: sale.profit === null ? null : Number(sale.profit),
+        items: sale.items.map((it) => ({ ...it, unitPrice: Number(it.unitPrice) })),
+      },
+    });
+  } catch (error) {
+    console.error("Finance sale GET error:", error);
+    return NextResponse.json({ error: "Failed to fetch sale" }, { status: 500 });
+  }
+}
+
 // PATCH /api/admin/finance/sales/[id] - update a sale
 export async function PATCH(
   request: NextRequest,

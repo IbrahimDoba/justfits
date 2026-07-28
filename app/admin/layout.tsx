@@ -52,7 +52,7 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-gray-100 light-theme">
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 flex items-center justify-between px-4">
+      <div className="lg:hidden print:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 flex items-center justify-between px-4">
         <button
           onClick={() => setMobileMenuOpen(true)}
           className="p-2 rounded-lg hover:bg-gray-100"
@@ -120,7 +120,7 @@ export default function AdminLayout({
       <motion.aside
         initial={false}
         animate={{ width: sidebarOpen ? 256 : 80 }}
-        className="hidden lg:flex fixed left-0 top-0 bottom-0 bg-gray-900 flex-col z-40"
+        className="hidden lg:flex print:!hidden fixed left-0 top-0 bottom-0 bg-gray-900 flex-col z-40"
       >
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
@@ -226,7 +226,7 @@ export default function AdminLayout({
       <main
         className={`transition-all duration-300 ${
           sidebarOpen ? "lg:ml-64" : "lg:ml-20"
-        } pt-16 lg:pt-0`}
+        } pt-16 lg:pt-0 print:!ml-0 print:!pt-0`}
       >
         <div className="min-h-screen">{children}</div>
       </main>

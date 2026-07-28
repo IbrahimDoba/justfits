@@ -24,6 +24,7 @@ import {
   Pencil,
   Trash2,
   X,
+  FileText,
 } from "lucide-react";
 
 /* ------------------------------ types ------------------------------ */
@@ -630,7 +631,29 @@ function SalesTable({
                 </span>
               </Td>
               <Td>
-                <RowActions onEdit={() => onEdit(s)} onDelete={() => onDelete(s.id)} />
+                <div className="flex items-center gap-1 justify-end">
+                  <a
+                    href={`/admin/finance/invoice/${s.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Create invoice"
+                    className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded"
+                  >
+                    <FileText size={15} />
+                  </a>
+                  <button
+                    onClick={() => onEdit(s)}
+                    className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    onClick={() => onDelete(s.id)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </Td>
             </tr>
           ))}
