@@ -81,6 +81,16 @@ export default function InvoicePage() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // The browser uses the document title as the default "Save as PDF" filename.
+  useEffect(() => {
+    if (!sale) return;
+    const prev = document.title;
+    document.title = `JUSTFITS Invoice for ${sale.customerName}`;
+    return () => {
+      document.title = prev;
+    };
+  }, [sale]);
+
   if (loading) {
     return (
       <div className="light-theme min-h-screen flex items-center justify-center text-gray-400">
