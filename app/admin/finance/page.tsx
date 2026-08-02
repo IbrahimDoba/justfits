@@ -1046,47 +1046,83 @@ function SaleModal({
           ) : (
             <div className="space-y-2">
               {items.map((it, idx) => (
-                <div key={idx} className="flex items-center gap-2">
+                <div
+                  key={idx}
+                  className="rounded-lg border border-gray-200 p-3 bg-gray-50/50"
+                >
+                  {/* Item name on its own line (names are long) */}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span
+                      className={`text-sm font-medium leading-snug ${
+                        it.name ? "text-gray-900" : "text-gray-400"
+                      }`}
+                    >
+                      {it.name
+                        ? `${it.name}${it.size ? ` · ${it.size}` : ""}`
+                        : "No item selected"}
+                    </span>
+                    <button
+                      onClick={() => removeItem(idx)}
+                      title="Remove"
+                      className="p-1 -m-1 text-gray-400 hover:text-red-600 rounded shrink-0"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
                   <select
                     value={it.inventoryItemId ?? ""}
                     onChange={(e) => pickInventory(idx, e.target.value)}
-                    className={`${inputCls} flex-1`}
+                    className={`${inputCls} w-full`}
                   >
-                    <option value="">
-                      {it.name ? `${it.name}${it.size ? ` (${it.size})` : ""}` : "Select item…"}
-                    </option>
+                    <option value="">Select item…</option>
                     {inventory.map((inv) => (
                       <option key={inv.id} value={inv.id}>
                         {inv.name}
-                        {inv.size ? ` - ${inv.size}` : ""} ({inv.quantity} in stock)
+                        {inv.size ? ` - ${inv.size}` : ""} ({inv.quantity} in
+                        stock)
                       </option>
                     ))}
                   </select>
-                  <input
-                    type="number"
-                    min={1}
-                    value={it.quantity}
-                    onChange={(e) =>
-                      setItem(idx, { quantity: Number(e.target.value) })
-                    }
-                    title="Quantity"
-                    className={`${inputCls} w-16 text-center`}
-                  />
-                  <input
-                    type="number"
-                    value={it.unitPrice}
-                    onChange={(e) =>
-                      setItem(idx, { unitPrice: Number(e.target.value) })
-                    }
-                    title="Sold price each (₦)"
-                    className={`${inputCls} w-24`}
-                  />
-                  <button
-                    onClick={() => removeItem(idx)}
-                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded shrink-0"
-                  >
-                    <X size={16} />
-                  </button>
+
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <label className="block">
+                      <span className="text-[11px] font-medium text-gray-500">
+                        Quantity
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={it.quantity}
+                        onChange={(e) =>
+                          setItem(idx, { quantity: Number(e.target.value) })
+                        }
+                        className={`${inputCls} mt-0.5`}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[11px] font-medium text-gray-500">
+                        Sold price each (₦)
+                      </span>
+                      <input
+                        type="number"
+                        value={it.unitPrice}
+                        onChange={(e) =>
+                          setItem(idx, { unitPrice: Number(e.target.value) })
+                        }
+                        className={`${inputCls} mt-0.5`}
+                      />
+                    </label>
+                  </div>
+
+                  {it.quantity > 0 && it.unitPrice > 0 && (
+                    <div className="text-right text-xs text-gray-500 mt-1.5">
+                      Line total:{" "}
+                      <span className="font-medium text-gray-700">
+                        {naira(it.quantity * it.unitPrice)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
               <div className="text-right text-xs text-gray-600">
