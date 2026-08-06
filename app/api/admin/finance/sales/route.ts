@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       where.OR = [
         { customerName: { contains: search, mode: "insensitive" } },
+        { customerPhone: { contains: search, mode: "insensitive" } },
         { productText: { contains: search, mode: "insensitive" } },
         { variantText: { contains: search, mode: "insensitive" } },
       ];
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const customerName = String(body.customerName || "").trim();
+    const customerPhone = String(body.customerPhone || "").trim() || null;
 
     // Parse optional itemised line items (inventory picks).
     type LineItem = {
@@ -154,6 +156,7 @@ export async function POST(request: NextRequest) {
         data: {
           date: body.date ? new Date(body.date) : new Date(),
           customerName,
+          customerPhone,
           productText,
           variantText: body.variantText?.trim() || null,
           quantity,

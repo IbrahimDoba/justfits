@@ -515,9 +515,10 @@ model LoyaltyReward {
 model Sale {
   id String @id @default(cuid())
 
-  date         DateTime
-  customerName String
-  productText  String // Free text as kept in the sheet, e.g. "Benz/Ferrari"
+  date          DateTime
+  customerName  String
+  customerPhone String? // For new-stock reminder messages
+  productText   String // Free text as kept in the sheet, e.g. "Benz/Ferrari"
   variantText  String? // Colours/variant description, e.g. "Black/Pink & Black (AMG)"
 
   quantity  Int     @default(1)

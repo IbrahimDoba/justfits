@@ -35,6 +35,7 @@ interface Sale {
   id: string;
   date: string;
   customerName: string;
+  customerPhone: string | null;
   productText: string;
   variantText: string | null;
   quantity: number;
@@ -204,6 +205,7 @@ export default function FinancePage() {
     return sales.filter(
       (s) =>
         s.customerName.toLowerCase().includes(q) ||
+        (s.customerPhone || "").toLowerCase().includes(q) ||
         s.productText.toLowerCase().includes(q) ||
         (s.variantText || "").toLowerCase().includes(q)
     );
@@ -599,6 +601,11 @@ function SalesTable({
               <Td className="whitespace-nowrap text-gray-600">{fmtDate(s.date)}</Td>
               <Td className="font-medium text-gray-900">
                 {s.customerName}
+                {s.customerPhone && (
+                  <div className="text-[10px] font-normal text-gray-400">
+                    {s.customerPhone}
+                  </div>
+                )}
                 {s.location && (
                   <div className="text-[10px] font-normal text-gray-400">
                     {s.location}
@@ -891,6 +898,7 @@ function SaleModal({
   const [form, setForm] = useState({
     date: toDateInput(edit?.date),
     customerName: edit?.customerName ?? "",
+    customerPhone: edit?.customerPhone ?? "",
     productText: edit?.productText ?? "",
     variantText: edit?.variantText ?? "",
     quantity: edit?.quantity ?? 1,
@@ -954,6 +962,7 @@ function SaleModal({
       ...f,
       date: d.date ? String(d.date).slice(0, 10) : f.date,
       customerName: (d.customerName as string) ?? f.customerName,
+      customerPhone: (d.customerPhone as string) ?? f.customerPhone ?? "",
       productText: (d.productText as string) ?? f.productText,
       variantText: (d.variantText as string) ?? f.variantText ?? "",
       deliveryFee: d.deliveryFee == null ? "" : (d.deliveryFee as number),
@@ -1168,6 +1177,15 @@ function SaleModal({
           <input
             value={form.customerName}
             onChange={(e) => set("customerName", e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Phone number">
+          <input
+            type="tel"
+            value={form.customerPhone}
+            onChange={(e) => set("customerPhone", e.target.value)}
+            placeholder="for new-stock reminders"
             className={inputCls}
           />
         </Field>

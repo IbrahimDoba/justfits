@@ -58,6 +58,8 @@ export async function PATCH(
     if (body.date !== undefined) data.date = new Date(body.date);
     if (body.customerName !== undefined)
       data.customerName = String(body.customerName).trim();
+    if (body.customerPhone !== undefined)
+      data.customerPhone = String(body.customerPhone).trim() || null;
     if (body.productText !== undefined)
       data.productText = String(body.productText).trim();
     if (body.variantText !== undefined)

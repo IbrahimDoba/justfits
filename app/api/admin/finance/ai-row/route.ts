@@ -52,6 +52,7 @@ ${inventoryList || "(none)"}
 Return ONLY a JSON object with these fields:
 - date: string (YYYY-MM-DD)
 - customerName: string
+- customerPhone: string | null (the customer's phone number if mentioned, digits as given, else null)
 - items: array of objects for each product sold, each: { inventoryItemId: string | null (the matching inventory id, or null if no good match), name: string (the item name), size: string | null, quantity: number, unitPrice: number (price sold per unit in NGN — default to the inventory price unless a different price is stated) }. Return [] if no specific product is identifiable.
 - variantText: string | null (extra colour/variant note if any, else null)
 - deliveryFee: number | null (NGN, null if not mentioned)
