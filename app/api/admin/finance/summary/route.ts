@@ -13,7 +13,12 @@ export async function GET() {
     const [salesAgg, expenseAgg, expensesByCategory, sales, expenses] =
       await Promise.all([
         prisma.sale.aggregate({
-          _sum: { totalCollected: true, profit: true, quantity: true },
+          _sum: {
+            totalCollected: true,
+            profit: true,
+            quantity: true,
+            deliveryFee: true,
+          },
           _count: true,
         }),
         prisma.expense.aggregate({ _sum: { amount: true }, _count: true }),
@@ -21,13 +26,18 @@ export async function GET() {
           by: ["category"],
           _sum: { amount: true },
         }),
-        prisma.sale.findMany({ select: { date: true, totalCollected: true } }),
+        prisma.sale.findMany({
+          select: { date: true, totalCollected: true, deliveryFee: true },
+        }),
         prisma.expense.findMany({ select: { date: true, amount: true } }),
       ]);
 
     const totalRevenue = Number(salesAgg._sum.totalCollected || 0);
     const totalProfit = Number(salesAgg._sum.profit || 0);
-    const totalExpenses = Number(expenseAgg._sum.amount || 0);
+    // Delivery fees on sales are money paid out to couriers — count them as
+    // expenses alongside the recorded expense entries.
+    const salesDeliveryFees = Number(salesAgg._sum.deliveryFee || 0);
+    const totalExpenses = Number(expenseAgg._sum.amount || 0) + salesDeliveryFees;
     const unitsSold = salesAgg._sum.quantity || 0;
 
     // Monthly series: revenue vs expenses, keyed "MMM YYYY"
@@ -37,9 +47,9 @@ export async function GET() {
     const months: Record<string, { revenue: number; expenses: number }> = {};
     for (const s of sales) {
       const k = monthKey(s.date);
-      (months[k] ??= { revenue: 0, expenses: 0 }).revenue += Number(
-        s.totalCollected
-      );
+      const m = (months[k] ??= { revenue: 0, expenses: 0 });
+      m.revenue += Number(s.totalCollected);
+      m.expenses += Number(s.deliveryFee || 0);
     }
     for (const e of expenses) {
       const k = monthKey(e.date);
@@ -62,6 +72,7 @@ export async function GET() {
         totalRevenue,
         totalProfit,
         totalExpenses,
+        salesDeliveryFees,
         net: totalRevenue - totalExpenses,
         netByProfit: totalProfit - totalExpenses,
         unitsSold,
@@ -69,7 +80,15 @@ export async function GET() {
         expensesCount: expenseAgg._count,
       },
       expensesByCategory: expensesByCategory
-        .map((c) => ({ category: c.category, amount: Number(c._sum.amount || 0) }))
+        .map((c) => ({
+          category: c.category as string,
+          amount: Number(c._sum.amount || 0),
+        }))
+        .concat(
+          salesDeliveryFees > 0
+            ? [{ category: "SALES DELIVERY", amount: salesDeliveryFees }]
+            : []
+        )
         .sort((a, b) => b.amount - a.amount),
       monthly,
     });

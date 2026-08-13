@@ -81,6 +81,7 @@ interface Summary {
     totalRevenue: number;
     totalProfit: number;
     totalExpenses: number;
+    salesDeliveryFees: number;
     net: number;
     netByProfit: number;
     unitsSold: number;
@@ -296,7 +297,9 @@ export default function FinancePage() {
         <StatCard
           label="Expenses"
           value={naira(t?.totalExpenses)}
-          sub={`${t?.expensesCount ?? 0} entries`}
+          sub={`${t?.expensesCount ?? 0} entries · incl. ${naira(
+            t?.salesDeliveryFees
+          )} sales delivery`}
           icon={<TrendingDown className="text-red-600" size={20} />}
           loading={loading}
         />
