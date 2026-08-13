@@ -25,6 +25,8 @@ import {
   Trash2,
   X,
   FileText,
+  Info,
+  Brain,
 } from "lucide-react";
 
 /* ------------------------------ types ------------------------------ */
@@ -152,7 +154,7 @@ const categoryStyles: Record<string, string> = {
   OTHER: "bg-gray-100 text-gray-800",
 };
 
-type Tab = "overview" | "sales" | "expenses";
+type Tab = "overview" | "sales" | "expenses" | "analysis";
 
 /* ------------------------------ page ------------------------------ */
 
@@ -295,6 +297,7 @@ export default function FinancePage() {
           sub={`${t?.salesCount ?? 0} sales · ${t?.unitsSold ?? 0} units`}
           icon={<TrendingUp className="text-green-600" size={20} />}
           loading={loading}
+          info="Sum of 'Total collected' on every sale — the actual money received, including delivery fees customers paid to us."
         />
         <StatCard
           label="Expenses"
@@ -304,6 +307,9 @@ export default function FinancePage() {
           )} sales delivery`}
           icon={<TrendingDown className="text-red-600" size={20} />}
           loading={loading}
+          info={`All expense entries (stock, ads, packaging, fees…) PLUS every delivery fee on sales (${naira(
+            t?.salesDeliveryFees
+          )}), since that money goes out to couriers. Stock counts when bought — so this spikes in restock months.`}
         />
         <StatCard
           label="Net (revenue − expenses)"
@@ -312,13 +318,15 @@ export default function FinancePage() {
           icon={<Wallet className="text-blue-600" size={20} />}
           loading={loading}
           highlight={(t?.net ?? 0) >= 0 ? "pos" : "neg"}
+          info="Cash movement: revenue minus ALL money out. This is not the same as profit — money sitting in unsold stock on the shelf is not counted here. A negative number after a restock is normal; see the Analysis tab."
         />
         <StatCard
           label="Sales profit"
           value={naira(t?.totalProfit)}
-          sub="Recorded profit on sales"
+          sub="Real profit: collected − cost − delivery"
           icon={<Package className="text-purple-600" size={20} />}
           loading={loading}
+          info="Gross profit per paid sale: money collected − landed cost of the items (purchase price + freight share) − delivery paid out. Before ads, packaging and fees. Unpaid sales count once marked paid."
         />
       </div>
 
@@ -354,7 +362,7 @@ export default function FinancePage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-gray-200 mb-4">
-        {(["overview", "sales", "expenses"] as Tab[]).map((tb) => (
+        {(["overview", "sales", "expenses", "analysis"] as Tab[]).map((tb) => (
           <button
             key={tb}
             onClick={() => setTab(tb)}
@@ -387,6 +395,8 @@ export default function FinancePage() {
         </div>
       ) : tab === "overview" ? (
         <OverviewTab summary={summary} />
+      ) : tab === "analysis" ? (
+        <AnalysisTab />
       ) : (
         <>
           {/* Search */}
@@ -452,6 +462,7 @@ function StatCard({
   icon,
   loading,
   highlight,
+  info,
 }: {
   label: string;
   value: string;
@@ -459,17 +470,37 @@ function StatCard({
   icon: React.ReactNode;
   loading?: boolean;
   highlight?: "pos" | "neg";
+  info?: string;
 }) {
+  const [showInfo, setShowInfo] = useState(false);
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm"
+      className="relative bg-white border border-gray-100 rounded-xl p-4 shadow-sm"
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-500">{label}</span>
+        <span className="text-xs font-medium text-gray-500 flex items-center gap-1">
+          {label}
+          {info && (
+            <button
+              type="button"
+              aria-label={`How ${label} is calculated`}
+              onClick={() => setShowInfo((v) => !v)}
+              onBlur={() => setShowInfo(false)}
+              className="text-gray-300 hover:text-gray-500 focus:text-gray-500"
+            >
+              <Info size={13} />
+            </button>
+          )}
+        </span>
         {icon}
       </div>
+      {info && showInfo && (
+        <div className="absolute left-3 right-3 top-10 z-20 rounded-lg border border-gray-200 bg-white p-3 text-[11px] leading-relaxed text-gray-600 shadow-lg">
+          {info}
+        </div>
+      )}
       <div
         className={`mt-2 text-xl font-bold ${
           highlight === "neg" ? "text-red-600" : "text-gray-900"
@@ -565,6 +596,232 @@ function OverviewTab({ summary }: { summary: Summary | null }) {
             <p className="text-sm text-gray-400">No expenses yet.</p>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------- analysis ----------------------------- */
+
+interface AnalysisMetrics {
+  generatedAt: string;
+  totals: {
+    revenue: number;
+    grossProfit: number;
+    expenseTotal: number;
+    salesDelivery: number;
+    cashNet: number;
+    units: number;
+    salesCount: number;
+    avgCollectedPerUnit: number;
+    grossMarginPct: number;
+  };
+  inventory: { units: number; costValue: number; retailValue: number };
+  receivables: { count: number; amount: number };
+  expensesByCategory: Record<string, number>;
+  monthly: Array<{
+    month: string;
+    revenue: number;
+    expenses: number;
+    stockSpend: number;
+    adSpend: number;
+    units: number;
+    net: number;
+    adRoi: number | null;
+  }>;
+}
+
+// Tiny renderer for the AI review (## headings, - bullets, **bold**).
+function MiniMarkdown({ text }: { text: string }) {
+  const bold = (s: string, key: number) =>
+    s.split(/\*\*(.+?)\*\*/g).map((part, i) =>
+      i % 2 === 1 ? (
+        <strong key={`${key}-${i}`} className="font-semibold text-gray-900">
+          {part}
+        </strong>
+      ) : (
+        part
+      )
+    );
+  return (
+    <div className="space-y-2">
+      {text.split("\n").map((line, i) => {
+        const t = line.trim();
+        if (!t) return null;
+        if (t.startsWith("## "))
+          return (
+            <h3 key={i} className="text-sm font-bold text-gray-900 mt-4 first:mt-0">
+              {t.slice(3)}
+            </h3>
+          );
+        if (t.startsWith("- ") || t.startsWith("* "))
+          return (
+            <div key={i} className="flex gap-2 text-sm text-gray-700">
+              <span className="text-gray-400 mt-0.5">•</span>
+              <span>{bold(t.slice(2), i)}</span>
+            </div>
+          );
+        return (
+          <p key={i} className="text-sm text-gray-700">
+            {bold(t, i)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+function AnalysisTab() {
+  const [metrics, setMetrics] = useState<AnalysisMetrics | null>(null);
+  const [review, setReview] = useState<string | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/finance/analysis")
+      .then((r) => r.json())
+      .then((d) => setMetrics(d.metrics ?? null))
+      .catch(() => setError("Failed to load metrics"))
+      .finally(() => setLoadingMetrics(false));
+  }, []);
+
+  const generate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/finance/analysis", { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Failed to generate review");
+      setMetrics(d.metrics ?? null);
+      setReview(d.review ?? null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to generate review");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if (loadingMetrics)
+    return (
+      <div className="flex items-center justify-center h-48 text-gray-400">
+        <Loader2 className="animate-spin" size={24} />
+      </div>
+    );
+
+  const t = metrics?.totals;
+  const tiles: Array<{ label: string; value: string; sub: string }> = metrics
+    ? [
+        {
+          label: "Stock on shelf",
+          value: naira(metrics.inventory.costValue),
+          sub: `${metrics.inventory.units} units · sells for ${naira(metrics.inventory.retailValue)}`,
+        },
+        {
+          label: "Owed to you",
+          value: naira(metrics.receivables.amount),
+          sub: `${metrics.receivables.count} unpaid/partial sales`,
+        },
+        {
+          label: "Gross margin",
+          value: `${t?.grossMarginPct ?? 0}%`,
+          sub: `avg ${naira(t?.avgCollectedPerUnit)} collected per unit`,
+        },
+        {
+          label: "True position",
+          value: naira((t?.cashNet ?? 0) + metrics.inventory.costValue + metrics.receivables.amount),
+          sub: `cash ${naira(t?.cashNet)} + stock + owed`,
+        },
+      ]
+    : [];
+
+  return (
+    <div className="space-y-6">
+      {/* Position tiles */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {tiles.map((x) => (
+          <div key={x.label} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+            <div className="text-xs font-medium text-gray-500">{x.label}</div>
+            <div className="mt-1.5 text-lg font-bold text-gray-900">{x.value}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">{x.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Monthly breakdown */}
+      <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-[11px] uppercase tracking-wide text-gray-400 border-b border-gray-100">
+              <th className="px-4 py-3">Month</th>
+              <th className="px-4 py-3 text-right">Revenue</th>
+              <th className="px-4 py-3 text-right">Expenses</th>
+              <th className="px-4 py-3 text-right">Stock spend</th>
+              <th className="px-4 py-3 text-right">Ads</th>
+              <th className="px-4 py-3 text-right">Ad ROI</th>
+              <th className="px-4 py-3 text-right">Units</th>
+              <th className="px-4 py-3 text-right">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {metrics?.monthly.map((m) => (
+              <tr key={m.month} className="border-b border-gray-50">
+                <td className="px-4 py-2.5 text-gray-700">{m.month}</td>
+                <td className="px-4 py-2.5 text-right text-gray-900">{naira(m.revenue)}</td>
+                <td className="px-4 py-2.5 text-right text-gray-600">{naira(m.expenses)}</td>
+                <td className="px-4 py-2.5 text-right text-gray-500">
+                  {m.stockSpend ? naira(m.stockSpend) : "—"}
+                </td>
+                <td className="px-4 py-2.5 text-right text-gray-500">
+                  {m.adSpend ? naira(m.adSpend) : "—"}
+                </td>
+                <td className="px-4 py-2.5 text-right text-gray-500">
+                  {m.adRoi ? `${m.adRoi}x` : "—"}
+                </td>
+                <td className="px-4 py-2.5 text-right text-gray-500">{m.units}</td>
+                <td
+                  className={`px-4 py-2.5 text-right font-medium ${
+                    m.net >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {naira(m.net)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* AI review */}
+      <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Brain size={16} className="text-purple-600" />
+            <span className="text-sm font-semibold text-gray-900">AI review</span>
+          </div>
+          <button
+            onClick={generate}
+            disabled={generating}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-black text-white text-xs font-medium hover:bg-gray-800 disabled:opacity-50"
+          >
+            {generating ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <Sparkles size={13} />
+            )}
+            {review ? "Regenerate" : "Generate review"}
+          </button>
+        </div>
+        {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
+        {review ? (
+          <MiniMarkdown text={review} />
+        ) : (
+          <p className="text-sm text-gray-400">
+            Generates a short written review of the whole ledger — what&apos;s working,
+            what&apos;s leaking money, and what to do next month. The numbers above are
+            computed live from your sales, expenses and inventory.
+          </p>
+        )}
       </div>
     </div>
   );
