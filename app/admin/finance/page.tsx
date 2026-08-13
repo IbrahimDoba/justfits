@@ -57,11 +57,13 @@ interface SaleLineItem {
   size: string | null;
   quantity: number;
   unitPrice: number;
+  costPrice?: number | null;
 }
 
 interface InventoryOption {
   id: string;
   name: string;
+  costPrice: number | null;
   size: string | null;
   sellingPrice: number | null;
   quantity: number;
@@ -935,6 +937,23 @@ function SaleModal({
     0
   );
 
+  // Preview of the server's auto profit: collected − item costs − delivery.
+  // Only when every line is linked to inventory with a known cost price.
+  const allCosted =
+    items.length > 0 &&
+    items.every((i) => i.inventoryItemId && i.costPrice != null);
+  const previewFee =
+    form.deliveryFee === "" ? 0 : Number(form.deliveryFee) || 0;
+  const previewCollected =
+    form.totalCollected === ""
+      ? itemsSubtotal + previewFee
+      : Number(form.totalCollected) || 0;
+  const estProfit = allCosted
+    ? previewCollected -
+      items.reduce((s, i) => s + i.quantity * (i.costPrice ?? 0), 0) -
+      previewFee
+    : null;
+
   const addItem = () =>
     setItems((prev) => [
       ...prev,
@@ -957,6 +976,7 @@ function SaleModal({
       name: inv.name,
       size: inv.size,
       unitPrice: inv.sellingPrice ?? 0,
+      costPrice: inv.costPrice,
     });
   };
 
@@ -1267,7 +1287,11 @@ function SaleModal({
             type="number"
             value={form.profit}
             onChange={(e) => set("profit", e.target.value)}
-            placeholder="blank = none yet"
+            placeholder={
+              estProfit !== null
+                ? `auto: ₦${estProfit.toLocaleString()} (real profit)`
+                : "blank = none yet"
+            }
             className={inputCls}
           />
         </Field>

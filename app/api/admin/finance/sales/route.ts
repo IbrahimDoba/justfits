@@ -140,10 +140,35 @@ export async function POST(request: NextRequest) {
       body.totalCollected === ""
         ? baseSubtotal + (deliveryFee || 0)
         : Number(body.totalCollected);
-    const profit =
+    // Real profit = collected − cost of goods − delivery paid out.
+    // Auto-calculated when not provided, if every line item is linked to an
+    // inventory record with a known costPrice. (If the customer paid delivery
+    // it is inside totalCollected, so subtracting the fee is correct either way.)
+    let profit =
       body.profit === null || body.profit === undefined || body.profit === ""
         ? null
         : Number(body.profit);
+    if (profit === null && items.length > 0) {
+      const ids = items
+        .map((i) => i.inventoryItemId)
+        .filter((id): id is string => !!id);
+      if (ids.length === items.length) {
+        const invItems = await prisma.inventoryItem.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, costPrice: true },
+        });
+        const costById = new Map(
+          invItems.map((i) => [i.id, i.costPrice === null ? null : Number(i.costPrice)])
+        );
+        const costs = items.map(
+          (i) => [i.quantity, costById.get(i.inventoryItemId!)] as const
+        );
+        if (costs.every(([, c]) => c !== null && c !== undefined)) {
+          const cogs = costs.reduce((s, [q, c]) => s + q * (c as number), 0);
+          profit = totalCollected - cogs - (deliveryFee || 0);
+        }
+      }
+    }
     const paymentStatus = PAYMENT_STATUSES.includes(body.paymentStatus)
       ? body.paymentStatus
       : "PAID";

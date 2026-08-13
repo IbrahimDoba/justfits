@@ -59,7 +59,7 @@ Return ONLY a JSON object with these fields:
 - deliveryPaidBy: string | null (who paid/handled delivery: "Him"/"Her"/"Me"/"Both"/"Pickup", else null)
 - location: string | null (delivery/sale location, e.g. "Abuja", "Lagos - Lekki", else null)
 - totalCollected: number (total NGN actually received; if not stated, compute sum(items qty*unitPrice) + (deliveryFee||0))
-- profit: number | null (null if unknown/"none yet")
+- profit: number | null (null if not explicitly stated — the system auto-calculates real profit from item costs when null; never guess it)
 - paymentStatus: "PAID" | "PARTIAL" | "PENDING" ("PARTIAL" if half/part paid, "PENDING" if unpaid, else "PAID")
 - notes: string | null (any extra context, else null)
 Interpret Nigerian shorthand like "26k" = 26000. Match items to the inventory by name and size as closely as possible. Never invent data that isn't implied.`;
