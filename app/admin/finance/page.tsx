@@ -1222,6 +1222,31 @@ function SaleModal({
     setItems((prev) =>
       prev.map((it, i) => (i === idx ? { ...it, ...patch } : it))
     );
+  const productNames = useMemo(
+    () => Array.from(new Set(inventory.map((v) => v.name))).sort(),
+    [inventory]
+  );
+  const variantsFor = (name: string) =>
+    inventory.filter((v) => v.name === name);
+  // Step 1 of the picker: choose the product; auto-link when it has no sizes.
+  const pickProduct = (idx: number, name: string) => {
+    const variants = variantsFor(name);
+    if (!name || variants.length === 0) {
+      setItem(idx, { inventoryItemId: null, name: "", size: null, costPrice: null });
+      return;
+    }
+    if (variants.length === 1 && !variants[0].size) {
+      pickInventory(idx, variants[0].id);
+      return;
+    }
+    setItem(idx, {
+      inventoryItemId: null,
+      name,
+      size: null,
+      costPrice: null,
+      unitPrice: variants[0].sellingPrice ?? 0,
+    });
+  };
   const pickInventory = (idx: number, invId: string) => {
     const inv = inventory.find((v) => v.id === invId);
     if (!inv) {
@@ -1283,6 +1308,26 @@ function SaleModal({
       alert("Add at least one item, or type a product.");
       return;
     }
+    if (!edit) {
+      for (const it of cleanItems) {
+        if (!it.inventoryItemId) continue;
+        const inv = inventory.find((v) => v.id === it.inventoryItemId);
+        if (inv && it.quantity > inv.quantity) {
+          alert(
+            `Only ${inv.quantity} of "${inv.name}${inv.size ? ` [${inv.size}]` : ""}" in stock. Check the size you picked, or recount first.`
+          );
+          return;
+        }
+      }
+      const unlinked = cleanItems.filter((it) => !it.inventoryItemId).length;
+      const manualOnly = cleanItems.length === 0 && form.productText.trim();
+      if (unlinked > 0 || manualOnly) {
+        const ok = confirm(
+          `${manualOnly ? "This sale" : `${unlinked} item(s)`} isn't linked to inventory, so stock WON'T be deducted and profit can't be auto-calculated. Only continue if the product really isn't in the inventory list.`
+        );
+        if (!ok) return;
+      }
+    }
     setSaving(true);
     try {
       const url = edit
@@ -1295,7 +1340,10 @@ function SaleModal({
           edit ? form : { ...form, items: cleanItems }
         ),
       });
-      if (!res.ok) throw new Error("Save failed");
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Save failed");
+      }
       onSaved();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Save failed");
@@ -1359,20 +1407,55 @@ function SaleModal({
                     </button>
                   </div>
 
-                  <select
-                    value={it.inventoryItemId ?? ""}
-                    onChange={(e) => pickInventory(idx, e.target.value)}
-                    className={`${inputCls} w-full`}
-                  >
-                    <option value="">Select item…</option>
-                    {inventory.map((inv) => (
-                      <option key={inv.id} value={inv.id}>
-                        {inv.name}
-                        {inv.size ? ` - ${inv.size}` : ""} ({inv.quantity} in
-                        stock)
-                      </option>
-                    ))}
-                  </select>
+                  {/* Step 1: product. Step 2: size (stock shown, sold-out disabled). */}
+                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                    <select
+                      value={productNames.includes(it.name) ? it.name : ""}
+                      onChange={(e) => pickProduct(idx, e.target.value)}
+                      className={`${inputCls} w-full`}
+                    >
+                      <option value="">Select product…</option>
+                      {productNames.map((n) => {
+                        const left = variantsFor(n).reduce((a, v) => a + v.quantity, 0);
+                        return (
+                          <option key={n} value={n} disabled={left === 0}>
+                            {n} {left === 0 ? "— sold out" : `(${left} left)`}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {variantsFor(it.name).some((v) => v.size) && (
+                      <select
+                        value={it.inventoryItemId ?? ""}
+                        onChange={(e) => pickInventory(idx, e.target.value)}
+                        className={`${inputCls} min-w-[9.5rem]`}
+                      >
+                        <option value="">Size…</option>
+                        {variantsFor(it.name).map((v) => (
+                          <option key={v.id} value={v.id} disabled={v.quantity === 0}>
+                            {v.size ?? "One size"}{" "}
+                            {v.quantity === 0 ? "— sold out" : `(${v.quantity} left)`}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  {it.name && !it.inventoryItemId && (
+                    <p className="mt-1 text-[11px] text-amber-600">
+                      {variantsFor(it.name).length
+                        ? "Pick the size — stock is deducted per size."
+                        : "Not linked to inventory: stock won't be deducted and profit can't be auto-calculated."}
+                    </p>
+                  )}
+                  {it.inventoryItemId &&
+                    (() => {
+                      const inv = inventory.find((v) => v.id === it.inventoryItemId);
+                      return inv && it.quantity > inv.quantity ? (
+                        <p className="mt-1 text-[11px] text-red-600">
+                          Only {inv.quantity} in stock — check the size or recount.
+                        </p>
+                      ) : null;
+                    })()}
 
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <label className="block">

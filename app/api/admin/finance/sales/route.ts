@@ -5,6 +5,8 @@ import type { Prisma } from "@prisma/client";
 
 const PAYMENT_STATUSES = ["PAID", "PARTIAL", "PENDING"] as const;
 
+class OversellError extends Error {}
+
 // GET /api/admin/finance/sales - list offline sales (optional filters)
 export async function GET(request: NextRequest) {
   const session = await requireAdmin();
@@ -210,18 +212,24 @@ export async function POST(request: NextRequest) {
         include: { items: true },
       });
 
-      // Atomic, clamp-at-0 inventory deduction for each linked item.
+      // Deduct stock for each linked item. Overselling is rejected (not
+      // clamped) so the ledger can never drift quietly below the shelf.
       if (deductStock) {
         for (const i of items) {
           if (!i.inventoryItemId) continue;
           const inv = await tx.inventoryItem.findUnique({
             where: { id: i.inventoryItemId },
-            select: { quantity: true },
+            select: { quantity: true, name: true, size: true },
           });
           if (!inv) continue;
+          if (i.quantity > inv.quantity) {
+            throw new OversellError(
+              `Only ${inv.quantity} of "${inv.name}${inv.size ? ` [${inv.size}]` : ""}" in stock — check the size, or recount first.`
+            );
+          }
           await tx.inventoryItem.update({
             where: { id: i.inventoryItemId },
-            data: { quantity: Math.max(0, inv.quantity - i.quantity) },
+            data: { quantity: { decrement: i.quantity } },
           });
         }
       }
@@ -239,6 +247,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ sale }, { status: 201 });
   } catch (error) {
+    if (error instanceof OversellError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("Finance sales POST error:", error);
     return NextResponse.json(
       { error: "Failed to create sale" },
