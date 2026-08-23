@@ -614,10 +614,11 @@ enum ExpenseCategory {
 model InventoryItem {
   id String @id @default(cuid())
 
-  name  String
-  brand String? // e.g. Benz, BMW, Ferrari
-  size  String? // e.g. L, XL, XXL, 3XL for shirts; null for one-size caps
-  sku   String?
+  name     String
+  brand    String? // e.g. Benz, BMW, Ferrari
+  category InventoryCategory @default(OTHER) // CAP / SHIRT / OTHER — drives grouping & filters
+  size     String? // e.g. L, XL, XXL, 3XL for shirts; null for one-size caps
+  sku      String?
 
   costPrice    Decimal? @db.Decimal(10, 2) // what it costs you
   sellingPrice Decimal? @db.Decimal(10, 2) // default sale price
@@ -636,7 +637,14 @@ model InventoryItem {
 
   @@index([name])
   @@index([productId])
+  @@index([category])
   @@map("inventory_items")
+}
+
+enum InventoryCategory {
+  CAP
+  SHIRT
+  OTHER
 }
 
 // ============================================

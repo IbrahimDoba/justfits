@@ -22,6 +22,8 @@ export async function PATCH(
     const data: Prisma.InventoryItemUpdateInput = {};
     if (body.name !== undefined) data.name = String(body.name).trim();
     if (body.brand !== undefined) data.brand = body.brand?.trim() || null;
+    if (body.category !== undefined && ["CAP", "SHIRT", "OTHER"].includes(body.category))
+      data.category = body.category;
     if (body.size !== undefined) data.size = body.size?.trim() || null;
     if (body.sku !== undefined) data.sku = body.sku?.trim() || null;
     if (body.costPrice !== undefined) data.costPrice = num(body.costPrice);

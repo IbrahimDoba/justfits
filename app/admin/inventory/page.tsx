@@ -19,10 +19,25 @@ import {
   ChevronDown,
 } from "lucide-react";
 
+type Category = "CAP" | "SHIRT" | "OTHER";
+const CATEGORY_LABELS: Record<Category, string> = {
+  CAP: "Caps",
+  SHIRT: "Shirts",
+  OTHER: "Other",
+};
+const CATEGORY_ORDER: Category[] = ["CAP", "SHIRT", "OTHER"];
+const guessCategory = (name: string): Category =>
+  /shirt|polo|tee|jersey/i.test(name)
+    ? "SHIRT"
+    : /cap|hat/i.test(name)
+      ? "CAP"
+      : "OTHER";
+
 interface InventoryItem {
   id: string;
   name: string;
   brand: string | null;
+  category: Category;
   size: string | null;
   sku: string | null;
   costPrice: number | null;
@@ -46,6 +61,8 @@ export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<"ALL" | Category>("ALL");
+  const [groupBy, setGroupBy] = useState<"none" | "brand" | "category">("none");
   const [importing, setImporting] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState<{
@@ -81,15 +98,27 @@ export default function InventoryPage() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return items;
-    return items.filter(
+    const byCategory =
+      category === "ALL" ? items : items.filter((i) => i.category === category);
+    if (!q) return byCategory;
+    return byCategory.filter(
       (i) =>
         i.name.toLowerCase().includes(q) ||
         (i.brand || "").toLowerCase().includes(q) ||
         (i.size || "").toLowerCase().includes(q) ||
         (i.sku || "").toLowerCase().includes(q)
     );
-  }, [items, search]);
+  }, [items, search, category]);
+
+  // Units per category for the filter pills (whole inventory, not filtered).
+  const categoryUnits = useMemo(() => {
+    const u: Record<"ALL" | Category, number> = { ALL: 0, CAP: 0, SHIRT: 0, OTHER: 0 };
+    for (const i of items) {
+      u.ALL += i.quantity;
+      u[i.category] += i.quantity;
+    }
+    return u;
+  }, [items]);
 
   // Group items that share a name (e.g. a shirt across sizes) into one
   // expandable group; single one-size items (caps) render as plain rows.
@@ -114,6 +143,7 @@ export default function InventoryPage() {
         name,
         items: groupItems,
         brand: groupItems[0].brand,
+        category: groupItems[0].category,
         totalQty,
         totalValue,
         prices,
@@ -121,6 +151,32 @@ export default function InventoryPage() {
       };
     });
   }, [filtered]);
+
+  // Optional section headers: by brand, or by category (Caps / Shirts / Other).
+  const sections = useMemo(() => {
+    if (groupBy === "none")
+      return [{ key: "all", label: "", groups, units: 0, value: 0 }];
+    const map = new Map<string, typeof groups>();
+    for (const g of groups) {
+      const key =
+        groupBy === "brand" ? g.brand || "Unbranded" : CATEGORY_LABELS[g.category];
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(g);
+    }
+    const rank = (k: string) =>
+      groupBy === "category"
+        ? CATEGORY_ORDER.findIndex((c) => CATEGORY_LABELS[c] === k)
+        : 0;
+    return Array.from(map.entries())
+      .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+      .map(([key, gs]) => ({
+        key,
+        label: key,
+        groups: gs,
+        units: gs.reduce((s, g) => s + g.totalQty, 0),
+        value: gs.reduce((s, g) => s + g.totalValue, 0),
+      }));
+  }, [groups, groupBy]);
 
   const stats = useMemo(() => {
     const totalUnits = items.reduce((s, i) => s + i.quantity, 0);
@@ -224,15 +280,47 @@ export default function InventoryPage() {
         <StatCard label="Out of stock" value={String(stats.outOfStock)} icon={<Boxes className="text-amber-600" size={20} />} />
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4 max-w-sm">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search inventory…"
-          className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10"
-        />
+      {/* Toolbar: search · category filter · group by */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="relative w-full sm:w-72">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search inventory…"
+            className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10"
+          />
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1">
+          {(["ALL", ...CATEGORY_ORDER] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCategory(c)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                category === c
+                  ? "bg-black text-white"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              {c === "ALL" ? "All" : CATEGORY_LABELS[c]}
+              <span className={`ml-1.5 tabular-nums ${category === c ? "text-gray-300" : "text-gray-400"}`}>
+                {categoryUnits[c]}
+              </span>
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-xs text-gray-500">
+          Group by
+          <select
+            value={groupBy}
+            onChange={(e) => setGroupBy(e.target.value as typeof groupBy)}
+            className="px-2.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-black/10"
+          >
+            <option value="none">Product</option>
+            <option value="brand">Brand</option>
+            <option value="category">Caps / Shirts</option>
+          </select>
+        </label>
       </div>
 
       {loading ? (
@@ -241,7 +329,9 @@ export default function InventoryPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white border border-dashed border-gray-200 rounded-xl p-10 text-center text-gray-400 text-sm">
-          No inventory items. Add one or import from your products.
+          {search || category !== "ALL"
+            ? "No items match this filter."
+            : "No inventory items. Add one or import from your products."}
         </div>
       ) : (
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto">
@@ -259,7 +349,26 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {groups.map((g) => {
+              {sections.map((sec) => (
+                <Fragment key={sec.key}>
+                  {groupBy !== "none" && (
+                    <tr className="bg-gray-100/80 border-b border-gray-200">
+                      <td colSpan={5} className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                        {sec.label}
+                        <span className="ml-2 font-normal normal-case tracking-normal text-gray-400">
+                          {sec.groups.length} product{sec.groups.length === 1 ? "" : "s"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center text-xs font-semibold tabular-nums text-gray-700">
+                        {sec.units}
+                      </td>
+                      <td className="px-4 py-2 text-right text-xs font-semibold tabular-nums text-gray-700">
+                        {naira(sec.value)}
+                      </td>
+                      <td />
+                    </tr>
+                  )}
+                  {sec.groups.map((g) => {
                 // Single one-size item (cap): plain row.
                 if (!g.grouped) {
                   const i = g.items[0];
@@ -406,7 +515,9 @@ export default function InventoryPage() {
                     )}
                   </Fragment>
                 );
-              })}
+                  })}
+                </Fragment>
+              ))}
             </tbody>
           </table>
         </div>
@@ -556,6 +667,8 @@ function ItemModal({
   const [form, setForm] = useState({
     name: edit?.name ?? preset?.name ?? "",
     brand: edit?.brand ?? preset?.brand ?? "",
+    category:
+      edit?.category ?? preset?.category ?? guessCategory(preset?.name ?? ""),
     size: edit?.size ?? preset?.size ?? "",
     sku: edit?.sku ?? "",
     costPrice: edit?.costPrice ?? "",
@@ -565,7 +678,15 @@ function ItemModal({
     isActive: edit?.isActive ?? true,
   });
   const [saving, setSaving] = useState(false);
+  const [categoryTouched, setCategoryTouched] = useState(!!edit);
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+  // New items: follow the name until the user picks a category themselves.
+  const setName = (name: string) =>
+    setForm((f) => ({
+      ...f,
+      name,
+      category: categoryTouched ? f.category : guessCategory(name),
+    }));
 
   const submit = async () => {
     if (!form.name.trim()) {
@@ -615,11 +736,27 @@ function ItemModal({
               <Field label="Name">
                 <input
                   value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
+                  onChange={(e) => setName(e.target.value)}
                   className={inputCls}
                 />
               </Field>
             </div>
+            <Field label="Category">
+              <select
+                value={form.category}
+                onChange={(e) => {
+                  setCategoryTouched(true);
+                  set("category", e.target.value);
+                }}
+                className={inputCls}
+              >
+                {CATEGORY_ORDER.map((c) => (
+                  <option key={c} value={c}>
+                    {CATEGORY_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <Field label="Brand">
               <input
                 value={form.brand}

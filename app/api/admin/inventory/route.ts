@@ -61,10 +61,17 @@ export async function POST(request: NextRequest) {
 
     const num = (v: unknown) =>
       v === null || v === undefined || v === "" ? null : Number(v);
+    const CATEGORIES = ["CAP", "SHIRT", "OTHER"] as const;
+    const guessCategory = (n: string) =>
+      /shirt|polo|tee|jersey/i.test(n) ? "SHIRT" : /cap|hat/i.test(n) ? "CAP" : "OTHER";
+    const category = CATEGORIES.includes(body.category)
+      ? body.category
+      : guessCategory(name);
 
     const item = await prisma.inventoryItem.create({
       data: {
         name,
+        category,
         brand: body.brand?.trim() || null,
         size: body.size?.trim() || null,
         sku: body.sku?.trim() || null,

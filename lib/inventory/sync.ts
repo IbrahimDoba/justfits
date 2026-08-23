@@ -28,6 +28,11 @@ export async function syncInventoryFromProducts(prisma: PrismaClient) {
     await prisma.inventoryItem.create({
       data: {
         name: p.name,
+        category: /shirt|polo|tee|jersey/i.test(p.name)
+          ? "SHIRT"
+          : /cap|hat/i.test(p.name)
+            ? "CAP"
+            : "OTHER",
         brand,
         sellingPrice: p.basePrice,
         quantity,
