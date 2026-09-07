@@ -33,8 +33,18 @@ export async function PATCH(
       data.quantity = Math.max(0, parseInt(body.quantity, 10) || 0);
     if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
     if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
+    if (body.imageUrl !== undefined) data.imageUrl = body.imageUrl?.trim() || null;
 
     const item = await prisma.inventoryItem.update({ where: { id }, data });
+
+    // One image per product: propagate the photo to every size of this product.
+    if (body.imageUrl !== undefined) {
+      await prisma.inventoryItem.updateMany({
+        where: { name: item.name, id: { not: item.id } },
+        data: { imageUrl: item.imageUrl },
+      });
+    }
+
     return NextResponse.json({ item });
   } catch (error) {
     console.error("Inventory PATCH error:", error);

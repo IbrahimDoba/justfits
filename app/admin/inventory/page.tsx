@@ -17,6 +17,7 @@ import {
   Wallet,
   ChevronRight,
   ChevronDown,
+  Image as ImageIcon,
 } from "lucide-react";
 
 type Category = "CAP" | "SHIRT" | "OTHER";
@@ -40,6 +41,7 @@ interface InventoryItem {
   category: Category;
   size: string | null;
   sku: string | null;
+  imageUrl: string | null;
   costPrice: number | null;
   sellingPrice: number | null;
   quantity: number;
@@ -144,6 +146,7 @@ export default function InventoryPage() {
         items: groupItems,
         brand: groupItems[0].brand,
         category: groupItems[0].category,
+        imageUrl: groupItems.find((i) => i.imageUrl)?.imageUrl ?? null,
         totalQty,
         totalValue,
         prices,
@@ -380,12 +383,17 @@ export default function InventoryPage() {
                       }`}
                     >
                       <td className="px-4 py-3 font-medium text-gray-900">
-                        {i.name}
-                        {!i.isActive && (
-                          <span className="ml-2 text-[10px] uppercase text-gray-400">
-                            inactive
+                        <div className="flex items-center gap-2.5">
+                          <Thumb src={i.imageUrl} alt={i.name} />
+                          <span>
+                            {i.name}
+                            {!i.isActive && (
+                              <span className="ml-2 text-[10px] uppercase text-gray-400">
+                                inactive
+                              </span>
+                            )}
                           </span>
-                        )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-gray-600">
                         {i.brand || "—"}
@@ -430,6 +438,7 @@ export default function InventoryPage() {
                           ) : (
                             <ChevronRight size={15} className="text-gray-400" />
                           )}
+                          <Thumb src={g.imageUrl} alt={g.name} />
                           {g.name}
                         </div>
                       </td>
@@ -535,6 +544,24 @@ export default function InventoryPage() {
         />
       )}
     </div>
+  );
+}
+
+function Thumb({ src, alt }: { src: string | null; alt: string }) {
+  if (!src) {
+    return (
+      <span className="inline-flex items-center justify-center w-9 h-9 rounded-md bg-gray-100 text-gray-300 shrink-0">
+        <ImageIcon size={16} />
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      className="w-9 h-9 rounded-md object-cover bg-gray-100 shrink-0"
+    />
   );
 }
 
@@ -671,6 +698,7 @@ function ItemModal({
       edit?.category ?? preset?.category ?? guessCategory(preset?.name ?? ""),
     size: edit?.size ?? preset?.size ?? "",
     sku: edit?.sku ?? "",
+    imageUrl: edit?.imageUrl ?? preset?.imageUrl ?? "",
     costPrice: edit?.costPrice ?? "",
     sellingPrice: edit?.sellingPrice ?? preset?.sellingPrice ?? "",
     quantity: edit?.quantity ?? 0,
@@ -822,6 +850,19 @@ function ItemModal({
                   onChange={(e) => set("notes", e.target.value)}
                   className={inputCls}
                 />
+              </Field>
+            </div>
+            <div className="col-span-2">
+              <Field label="Image URL (applies to all sizes)">
+                <div className="flex items-center gap-3">
+                  <Thumb src={form.imageUrl || null} alt={form.name} />
+                  <input
+                    value={form.imageUrl}
+                    onChange={(e) => set("imageUrl", e.target.value)}
+                    placeholder="https://res.cloudinary.com/…"
+                    className={inputCls}
+                  />
+                </div>
               </Field>
             </div>
           </div>

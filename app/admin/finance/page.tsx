@@ -69,6 +69,7 @@ interface InventoryOption {
   size: string | null;
   sellingPrice: number | null;
   quantity: number;
+  imageUrl: string | null;
 }
 
 interface Expense {
@@ -1389,15 +1390,30 @@ function SaleModal({
                 >
                   {/* Item name on its own line (names are long) */}
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <span
-                      className={`text-sm font-medium leading-snug ${
-                        it.name ? "text-gray-900" : "text-gray-400"
-                      }`}
-                    >
-                      {it.name
-                        ? `${it.name}${it.size ? ` · ${it.size}` : ""}`
-                        : "No item selected"}
-                    </span>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {(() => {
+                        const img = inventory.find(
+                          (v) => v.name === it.name
+                        )?.imageUrl;
+                        return img ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={img}
+                            alt={it.name}
+                            className="w-8 h-8 rounded object-cover bg-gray-100 shrink-0"
+                          />
+                        ) : null;
+                      })()}
+                      <span
+                        className={`text-sm font-medium leading-snug ${
+                          it.name ? "text-gray-900" : "text-gray-400"
+                        }`}
+                      >
+                        {it.name
+                          ? `${it.name}${it.size ? ` · ${it.size}` : ""}`
+                          : "No item selected"}
+                      </span>
+                    </div>
                     <button
                       onClick={() => removeItem(idx)}
                       title="Remove"

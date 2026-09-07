@@ -62,6 +62,7 @@ export default function InvoicePage() {
   const router = useRouter();
   const [sale, setSale] = useState<Sale | null>(null);
   const [settings, setSettings] = useState<StoreSettings>({});
+  const [imagesByName, setImagesByName] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,11 +72,19 @@ export default function InvoicePage() {
       fetch("/api/admin/settings")
         .then((r) => r.json())
         .catch(() => ({})),
+      fetch("/api/admin/inventory")
+        .then((r) => r.json())
+        .catch(() => ({ items: [] })),
     ])
-      .then(([s, st]) => {
+      .then(([s, st, inv]) => {
         if (!s?.sale) throw new Error(s?.error || "Sale not found");
         setSale(s.sale);
         setSettings(st || {});
+        const map: Record<string, string> = {};
+        for (const i of inv?.items ?? []) {
+          if (i.imageUrl && !map[i.name]) map[i.name] = i.imageUrl;
+        }
+        setImagesByName(map);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -247,10 +256,22 @@ export default function InvoicePage() {
               {lines.map((it, idx) => (
                 <tr key={idx} className="border-b border-gray-100">
                   <td className="py-3 text-gray-900">
-                    {it.name}
-                    {it.size && (
-                      <span className="text-gray-400"> · {it.size}</span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {imagesByName[it.name] && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={imagesByName[it.name]}
+                          alt={it.name}
+                          className="w-10 h-10 rounded object-cover bg-gray-100 shrink-0"
+                        />
+                      )}
+                      <span>
+                        {it.name}
+                        {it.size && (
+                          <span className="text-gray-400"> · {it.size}</span>
+                        )}
+                      </span>
+                    </div>
                   </td>
                   <td className="py-3 text-center text-gray-600">
                     {it.quantity}

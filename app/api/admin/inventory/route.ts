@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
         brand: body.brand?.trim() || null,
         size: body.size?.trim() || null,
         sku: body.sku?.trim() || null,
+        imageUrl: body.imageUrl?.trim() || null,
         costPrice: num(body.costPrice),
         sellingPrice: num(body.sellingPrice),
         quantity: Math.max(0, parseInt(body.quantity, 10) || 0),

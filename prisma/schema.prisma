@@ -619,6 +619,7 @@ model InventoryItem {
   category InventoryCategory @default(OTHER) // CAP / SHIRT / OTHER — drives grouping & filters
   size     String? // e.g. L, XL, XXL, 3XL for shirts; null for one-size caps
   sku      String?
+  imageUrl String? // product photo (shared across sizes of the same product)
 
   costPrice    Decimal? @db.Decimal(10, 2) // what it costs you
   sellingPrice Decimal? @db.Decimal(10, 2) // default sale price
