@@ -3,6 +3,46 @@ import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth/admin-guard";
 import type { Prisma } from "@prisma/client";
 
+const num = (v: unknown) =>
+  v === null || v === undefined ? null : Number(v);
+
+// GET /api/admin/inventory/[id] - single item + sibling sizes (same product)
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await requireAdmin();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  try {
+    const { id } = await params;
+    const item = await prisma.inventoryItem.findUnique({ where: { id } });
+    if (!item) {
+      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    }
+    const siblings = await prisma.inventoryItem.findMany({
+      where: { name: item.name },
+      orderBy: { size: "asc" },
+      select: { id: true, size: true, quantity: true, sellingPrice: true },
+    });
+    return NextResponse.json({
+      item: {
+        ...item,
+        costPrice: num(item.costPrice),
+        sellingPrice: num(item.sellingPrice),
+      },
+      siblings: siblings.map((s) => ({
+        ...s,
+        sellingPrice: num(s.sellingPrice),
+      })),
+    });
+  } catch (error) {
+    console.error("Inventory GET one error:", error);
+    return NextResponse.json({ error: "Failed to fetch item" }, { status: 500 });
+  }
+}
+
 // PATCH /api/admin/inventory/[id]
 export async function PATCH(
   request: NextRequest,
