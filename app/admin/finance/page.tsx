@@ -1177,18 +1177,29 @@ function SaleModal({
   const [saving, setSaving] = useState(false);
   const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
 
-  // Inventory item picker (create mode). Editing an itemised sale shows its
-  // items read-only, since stock was already deducted at creation.
+  // Inventory item picker. Available when creating AND editing a sale. On edit
+  // the picker is prefilled with the sale's existing items; saving replaces
+  // them (editing does not re-deduct stock).
   const [inventory, setInventory] = useState<InventoryOption[]>([]);
-  const [items, setItems] = useState<SaleLineItem[]>([]);
+  const [items, setItems] = useState<SaleLineItem[]>(
+    edit?.items?.length
+      ? edit.items.map((it) => ({
+          inventoryItemId: it.inventoryItemId ?? null,
+          name: it.name,
+          size: it.size ?? null,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          costPrice: null,
+        }))
+      : []
+  );
 
   useEffect(() => {
-    if (edit) return;
     fetch("/api/admin/inventory")
       .then((r) => r.json())
       .then((d) => setInventory(Array.isArray(d.items) ? d.items : []))
       .catch(() => setInventory([]));
-  }, [edit]);
+  }, []);
 
   const itemsSubtotal = items.reduce(
     (s, i) => s + i.quantity * i.unitPrice,
@@ -1337,9 +1348,7 @@ function SaleModal({
       const res = await fetch(url, {
         method: edit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          edit ? form : { ...form, items: cleanItems }
-        ),
+        body: JSON.stringify({ ...form, items: cleanItems }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -1359,14 +1368,14 @@ function SaleModal({
     <ModalShell title={edit ? "Edit sale" : "Add sale"} onClose={onClose}>
       {!edit && <AiCompose kind="sale" onDraft={applyDraft} />}
 
-      {/* Items sold from inventory (create mode) */}
-      {!edit && (
+      {/* Items sold from inventory (create + edit) */}
+      {(
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-gray-700">
               Items sold{" "}
               <span className="font-normal text-gray-400">
-                (deducted from stock)
+                {edit ? "(editing won't change stock)" : "(deducted from stock)"}
               </span>
             </span>
             <button
@@ -1519,27 +1528,6 @@ function SaleModal({
               </div>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Existing items on an itemised sale (edit mode, read-only) */}
-      {edit?.items && edit.items.length > 0 && (
-        <div className="mb-4 p-3 bg-gray-50 border border-gray-100 rounded-lg">
-          <span className="text-xs font-semibold text-gray-700">Items</span>
-          <ul className="mt-1 space-y-0.5">
-            {edit.items.map((it, i) => (
-              <li
-                key={i}
-                className="text-xs text-gray-600 flex justify-between gap-2"
-              >
-                <span>
-                  {it.name}
-                  {it.size ? ` (${it.size})` : ""} × {it.quantity}
-                </span>
-                <span>{naira(it.unitPrice)}</span>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 

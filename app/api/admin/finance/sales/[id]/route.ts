@@ -85,7 +85,54 @@ export async function PATCH(
       data.paymentStatus = body.paymentStatus;
     if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
 
-    const sale = await prisma.sale.update({ where: { id }, data });
+    // Optional itemised line items — replace the sale's items when provided.
+    // Editing does NOT re-deduct inventory stock (stock is only touched at
+    // creation), so this just keeps the record's line items accurate.
+    const hasItems = Array.isArray(body.items);
+    const cleanItems = hasItems
+      ? (body.items as unknown[])
+          .map((raw) => {
+            const it = raw as Record<string, unknown>;
+            return {
+              inventoryItemId: it.inventoryItemId ? String(it.inventoryItemId) : null,
+              name: String(it.name || "").trim(),
+              size: it.size ? String(it.size) : null,
+              quantity: Math.max(1, parseInt(String(it.quantity), 10) || 1),
+              unitPrice: Number(it.unitPrice) || 0,
+            };
+          })
+          .filter((it) => it.name)
+      : [];
+
+    if (hasItems && cleanItems.length > 0) {
+      data.quantity = cleanItems.reduce((s, i) => s + i.quantity, 0);
+      if (body.productText === undefined) {
+        data.productText = cleanItems
+          .map((i) => (i.size ? `${i.name} (${i.size})` : i.name))
+          .join(", ");
+      }
+    }
+
+    const sale = await prisma.$transaction(async (tx) => {
+      const updated = await tx.sale.update({ where: { id }, data });
+      if (hasItems) {
+        await tx.saleItem.deleteMany({ where: { saleId: id } });
+        if (cleanItems.length > 0) {
+          await tx.saleItem.createMany({
+            data: cleanItems.map((i) => ({
+              saleId: id,
+              inventoryItemId: i.inventoryItemId,
+              name: i.name,
+              size: i.size,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+            })),
+          });
+        }
+      }
+      return updated;
+    });
+
     return NextResponse.json({ sale });
   } catch (error) {
     console.error("Finance sales PATCH error:", error);
