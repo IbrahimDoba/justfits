@@ -1,37 +1,20 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
+import { getInventoryCategories, getInventoryListProducts } from "@/lib/shop/catalog-source";
 
-// GET /api/categories - Public API for listing categories
+export const dynamic = "force-dynamic";
+
+// GET /api/categories - Public categories for the shop filter.
+// Driven by inventory (single source of truth): All + Caps + Shirts.
 export async function GET() {
   try {
-    const categories = await prisma.category.findMany({
-      orderBy: { name: "asc" },
-      include: {
-        _count: {
-          select: {
-            products: {
-              where: { isActive: true },
-            },
-          },
-        },
-      },
-    });
-
-    // Add "All" category at the beginning
-    const allProductsCount = await prisma.product.count({
-      where: { isActive: true },
-    });
+    const [invCats, invProducts] = await Promise.all([
+      getInventoryCategories(),
+      getInventoryListProducts(),
+    ]);
 
     const transformedCategories = [
-      { id: "all", name: "All", slug: "all", productCount: allProductsCount },
-      ...categories.map((cat) => ({
-        id: cat.id,
-        name: cat.name,
-        slug: cat.slug,
-        description: cat.description,
-        image: cat.image,
-        productCount: cat._count.products,
-      })),
+      { id: "all", name: "All", slug: "all", productCount: invProducts.length },
+      ...invCats.sort((a, b) => a.name.localeCompare(b.name)),
     ];
 
     return NextResponse.json({ categories: transformedCategories });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { getInventoryProductBySlug } from "@/lib/shop/catalog-source";
 
 // GET /api/products/[slug] - Get a single product by slug
 export async function GET(
@@ -8,6 +9,12 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
+
+    // Inventory is the source of truth — resolve it first.
+    const fromInventory = await getInventoryProductBySlug(slug);
+    if (fromInventory) {
+      return NextResponse.json(fromInventory);
+    }
 
     const product = await prisma.product.findUnique({
       where: { slug, isActive: true },
