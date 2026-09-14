@@ -97,23 +97,70 @@ function toProduct(g: Group): AgentProduct {
   };
 }
 
-// Search across name + brand. Returns only in-stock products by default.
+// Remove everything but a-z0-9 so "red bull" and "redbull" compare equal.
+const collapse = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+// Break a query into meaningful tokens (drops punctuation and 1-char noise).
+const tokenize = (s: string) =>
+  s
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 2);
+
+// Score how well a group matches a set of query tokens. Each token counts once;
+// a token hits if it appears in the haystack, in the space-collapsed haystack
+// ("redbull" → "red bull"), or as a simple singular/plural of a present word.
+function scoreGroup(g: Group, tokens: string[], collapsedHay: string, hay: string) {
+  let score = 0;
+  for (const t of tokens) {
+    const singular = t.endsWith("s") ? t.slice(0, -1) : t;
+    if (
+      hay.includes(t) ||
+      collapsedHay.includes(collapse(t)) ||
+      (singular.length >= 2 && hay.includes(singular)) ||
+      hay.includes(`${t}s`)
+    ) {
+      score++;
+    }
+  }
+  return score;
+}
+
+// Fuzzy, token-based search across name + brand + category. Word order and
+// spacing don't matter ("red bull racing f1 shirt", "redbull shirt" both hit
+// "Red Bull Racing Shirt"). Results ranked by how many query words match, then
+// by stock. Returns only in-stock products unless includeOutOfStock is set.
 export async function searchAgentProducts(
   q: string,
   { limit = 8, includeOutOfStock = false } = {}
 ): Promise<AgentProduct[]> {
   const groups = await getGroups();
-  const query = q.toLowerCase().trim();
-  return groups
-    .filter((g) => (includeOutOfStock ? true : g.totalStock > 0))
-    .filter(
-      (g) =>
-        !query ||
-        g.name.toLowerCase().includes(query) ||
-        (g.brand || "").toLowerCase().includes(query)
+  const inStockOnly = groups.filter((g) =>
+    includeOutOfStock ? true : g.totalStock > 0
+  );
+
+  const tokens = tokenize(q);
+  const cap = Math.min(limit, 20);
+
+  // No/blank query → just list (in-stock first-N).
+  if (tokens.length === 0) {
+    return inStockOnly.slice(0, cap).map(toProduct);
+  }
+
+  return inStockOnly
+    .map((g) => {
+      const hay = `${g.name} ${g.brand ?? ""} ${CAT[g.category] ?? ""}`.toLowerCase();
+      const collapsedHay = collapse(hay);
+      return { g, score: scoreGroup(g, tokens, collapsedHay, hay) };
+    })
+    .filter((r) => r.score > 0)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.g.totalStock - a.g.totalStock ||
+        a.g.name.localeCompare(b.g.name)
     )
-    .slice(0, Math.min(limit, 20))
-    .map(toProduct);
+    .slice(0, cap)
+    .map((r) => toProduct(r.g));
 }
 
 export async function getAgentProductBySlug(
