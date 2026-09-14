@@ -74,10 +74,16 @@ export default function AiImageGeneratorModal({
   existingImages,
   onImageGenerated,
 }: AiImageGeneratorModalProps) {
+  // Mode: "product" = clean white-background product shot from a photo;
+  // "model" = a person wearing the item (original behavior).
+  const [mode, setMode] = useState<"product" | "model">("product");
+
   // Source Image Selection
   const [selectedSourceImage, setSelectedSourceImage] = useState<string | null>(
     existingImages.length > 0 ? existingImages[0] : null
   );
+  const [uploadedSources, setUploadedSources] = useState<string[]>([]);
+  const [uploadingSource, setUploadingSource] = useState(false);
 
   // Generation Options
   const [selectedView, setSelectedView] = useState("front");
@@ -93,7 +99,32 @@ export default function AiImageGeneratorModal({
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generationStep, setGenerationStep] = useState<string>("");
 
+  const uploadSource = async (file?: File | null) => {
+    if (!file) return;
+    setUploadingSource(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/inventory/upload", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      setUploadedSources((prev) => [data.url, ...prev]);
+      setSelectedSourceImage(data.url);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploadingSource(false);
+    }
+  };
+
   const handleGenerate = async () => {
+    if (mode === "product" && !selectedSourceImage) {
+      alert("Upload or select a source photo of the product first.");
+      return;
+    }
     if (!selectedSourceImage && !productName) {
       alert("Please upload a product image first or enter a product name");
       return;
@@ -101,28 +132,41 @@ export default function AiImageGeneratorModal({
 
     setIsGenerating(true);
     setGeneratedImage(null);
-    setGenerationStep("Analyzing product...");
+    setGenerationStep(
+      mode === "product" ? "Creating product shot..." : "Analyzing product..."
+    );
 
     try {
+      const body =
+        mode === "product"
+          ? {
+              sourceImageUrl: selectedSourceImage,
+              productName,
+              additionalDetails: additionalPrompt,
+              engine: "gemini",
+              mode: "product",
+            }
+          : {
+              sourceImageUrl: selectedSourceImage,
+              referenceImagePath:
+                referenceImages.find((r) => r.id === selectedReferenceImage)
+                  ?.path || "/images/model1.png",
+              productName,
+              view:
+                viewOptions.find((v) => v.id === selectedView)?.label ||
+                "Front View",
+              background:
+                backgrounds.find((b) => b.id === selectedBackground)?.label ||
+                "Studio White",
+              additionalDetails: additionalPrompt,
+              engine: selectedEngine,
+              model: selectedModel,
+              mode: "model",
+            };
       const response = await fetch("/api/admin/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceImageUrl: selectedSourceImage,
-          referenceImagePath:
-            referenceImages.find((r) => r.id === selectedReferenceImage)
-              ?.path || "/images/model1.png",
-          productName,
-          view:
-            viewOptions.find((v) => v.id === selectedView)?.label ||
-            "Front View",
-          background:
-            backgrounds.find((b) => b.id === selectedBackground)?.label ||
-            "Studio White",
-          additionalDetails: additionalPrompt,
-          engine: selectedEngine,
-          model: selectedModel,
-        }),
+        body: JSON.stringify(body),
       });
 
       setGenerationStep("Generating image...");
@@ -209,46 +253,88 @@ export default function AiImageGeneratorModal({
             <div className="grid grid-cols-1 lg:grid-cols-5 min-h-[500px]">
               {/* Left Panel - Controls */}
               <div className="lg:col-span-2 p-6 border-r border-gray-100 space-y-6 bg-gray-50">
+                {/* Mode toggle */}
+                <div>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setMode("product")}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        mode === "product"
+                          ? "bg-white text-black shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      Product shot
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMode("model")}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        mode === "model"
+                          ? "bg-white text-black shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      Model shot
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1.5 px-1">
+                    {mode === "product"
+                      ? "Turn a photo into a clean product image on a white background."
+                      : "Put the product on a model."}
+                  </p>
+                </div>
+
                 {/* Source Image Selection */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <Camera size={16} />
-                    Source Product Image
+                    {mode === "product" ? "Photo to clean up" : "Source Product Image"}
                   </label>
-                  {existingImages.length > 0 ? (
-                    <div className="grid grid-cols-4 gap-2">
-                      {existingImages.map((img, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setSelectedSourceImage(img)}
-                          className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${
-                            selectedSourceImage === img
-                              ? "border-black ring-2 ring-black/20"
-                              : "border-gray-200 hover:border-gray-300"
-                          }`}
-                        >
-                          <img
-                            src={img}
-                            alt={`Product ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-white rounded-xl border border-gray-200 text-center">
-                      <ImageIcon
-                        size={24}
-                        className="mx-auto text-gray-400 mb-2"
+                  <div className="grid grid-cols-4 gap-2">
+                    {[...uploadedSources, ...existingImages].map((img, idx) => (
+                      <button
+                        key={img + idx}
+                        type="button"
+                        onClick={() => setSelectedSourceImage(img)}
+                        className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                          selectedSourceImage === img
+                            ? "border-black ring-2 ring-black/20"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={img}
+                          alt={`Source ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                    <label
+                      className={`aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 hover:text-gray-600 cursor-pointer ${
+                        uploadingSource ? "opacity-60" : ""
+                      }`}
+                    >
+                      {uploadingSource ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <ImageIcon size={18} />
+                      )}
+                      <span className="text-[10px] mt-1">Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => uploadSource(e.target.files?.[0])}
                       />
-                      <p className="text-sm text-gray-500">
-                        Upload product images first to use as reference
-                      </p>
-                    </div>
-                  )}
+                    </label>
+                  </div>
                 </div>
 
+                {mode === "model" && (
+                <>
                 {/* Engine Selection */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -450,6 +536,8 @@ export default function AiImageGeneratorModal({
                     ))}
                   </div>
                 </div>
+                </>
+                )}
 
                 {/* Additional Details */}
                 <div>

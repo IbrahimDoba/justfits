@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateModelShot } from "@/lib/services/openai";
-import { generateGeminiImage } from "@/lib/services/gemini";
+import {
+  generateGeminiImage,
+  generateGeminiProductShot,
+} from "@/lib/services/gemini";
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +22,7 @@ export async function POST(request: NextRequest) {
       additionalDetails,
       engine = "openai", // Default to openai
       model,
+      mode = "model", // "model" (person wearing) or "product" (white-bg product shot)
     } = await request.json();
 
     // Validate required parameters
@@ -27,6 +31,17 @@ export async function POST(request: NextRequest) {
         { error: "Please upload a product image first" },
         { status: 400 }
       );
+    }
+
+    // Product-shot mode: clean white-background image from the uploaded photo.
+    if (mode === "product") {
+      const imageUrl = await generateGeminiProductShot({
+        productImageUrl: sourceImageUrl,
+        productName: productName || "product",
+        additionalDetails,
+        model: model || "gemini-2.5-flash-image",
+      });
+      return NextResponse.json({ imageUrl });
     }
 
     if (!referenceImagePath) {
