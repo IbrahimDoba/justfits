@@ -40,15 +40,46 @@ interface Sibling {
   sellingPrice: number | null;
 }
 
+// fetch with a timeout so a blocked/hung request fails fast instead of
+// spinning forever.
+async function fetchWithTimeout(
+  url: string,
+  opts: RequestInit,
+  ms: number,
+  label: string
+): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw new Error(`${label} timed out — check your connection.`);
+    }
+    // "Failed to fetch" usually means an ad-blocker/privacy extension or the
+    // network blocked the request.
+    throw new Error(
+      `${label} was blocked. Disable ad-blockers/shields for this site (they often block cloudinary.com) and try again.`
+    );
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function uploadToCloudinary(file: File): Promise<string> {
   const timestamp = Math.round(Date.now() / 1000);
   const folder = "justfits/inventory";
   const paramsToSign = { timestamp, folder };
-  const sigRes = await fetch("/api/admin/upload/sign", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ paramsToSign }),
-  });
+  const sigRes = await fetchWithTimeout(
+    "/api/admin/upload/sign",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paramsToSign }),
+    },
+    30000,
+    "Signing the upload"
+  );
   if (!sigRes.ok) throw new Error("Failed to sign upload");
   const { signature } = await sigRes.json();
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -60,8 +91,16 @@ async function uploadToCloudinary(file: File): Promise<string> {
   fd.append("timestamp", String(timestamp));
   fd.append("signature", signature);
   fd.append("folder", folder);
-  const up = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: fd });
-  if (!up.ok) throw new Error("Upload failed");
+  const up = await fetchWithTimeout(
+    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    { method: "POST", body: fd },
+    120000,
+    "Uploading the image"
+  );
+  if (!up.ok) {
+    const err = await up.json().catch(() => ({}));
+    throw new Error(err?.error?.message || "Cloudinary rejected the upload.");
+  }
   const data = await up.json();
   return data.secure_url as string;
 }
