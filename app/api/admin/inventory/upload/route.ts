@@ -37,16 +37,23 @@ export async function POST(request: NextRequest) {
       "base64"
     )}`;
 
+    // iPhone photos are HEIC/HEIF, which browsers can't display (they download
+    // instead). Convert those to web-friendly JPG on upload.
+    const isHeic =
+      /heic|heif/i.test(file.type) || /\.hei[cf]$/i.test(file.name || "");
+    const uploadOpts = {
+      folder: "justfits/inventory",
+      resource_type: "image" as const,
+      ...(isHeic ? { format: "jpg", quality: "auto:good" } : {}),
+    };
+
     // Cloudinary can throttle bursts with "Slow Down, Out of Processing
     // Capacity" (HTTP 420). Retry a few times with backoff.
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
-        const result = await cloudinary.uploader.upload(dataUri, {
-          folder: "justfits/inventory",
-          resource_type: "image",
-        });
+        const result = await cloudinary.uploader.upload(dataUri, uploadOpts);
         return NextResponse.json({ url: result.secure_url });
       } catch (e: unknown) {
         lastErr = e;
