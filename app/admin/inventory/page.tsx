@@ -1,8 +1,15 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useInventory,
+  INVENTORY_QUERY_KEY,
+  type InventoryListItem,
+} from "@/lib/hooks/useInventory";
+import { cloudinaryThumb } from "@/lib/utils/cloudinaryThumb";
 import {
   Boxes,
   Plus,
@@ -61,8 +68,11 @@ const naira = (n: number | null | undefined) =>
       }).format(n);
 
 export default function InventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: items = [], isLoading: loading } = useInventory();
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: INVENTORY_QUERY_KEY });
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<"ALL" | Category>("ALL");
   const [groupBy, setGroupBy] = useState<"none" | "brand" | "category">("none");
@@ -81,23 +91,6 @@ export default function InventoryPage() {
       else next.add(name);
       return next;
     });
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/inventory");
-      const data = await res.json();
-      setItems(Array.isArray(data.items) ? data.items : []);
-    } catch (e) {
-      console.error("Failed to load inventory", e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -194,13 +187,15 @@ export default function InventoryPage() {
   }, [items]);
 
   // Optimistic atomic add/deduct (clamped at 0 on the server).
+  const setQty = (id: string, quantity: number) =>
+    queryClient.setQueryData<InventoryListItem[]>(
+      INVENTORY_QUERY_KEY,
+      (prev) => prev?.map((i) => (i.id === id ? { ...i, quantity } : i)) ?? prev
+    );
+
   const adjust = async (item: InventoryItem, delta: number) => {
     if (item.quantity + delta < 0) return;
-    setItems((prev) =>
-      prev.map((i) =>
-        i.id === item.id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i
-      )
-    );
+    setQty(item.id, Math.max(0, item.quantity + delta));
     try {
       const res = await fetch(`/api/admin/inventory/${item.id}/adjust`, {
         method: "POST",
@@ -208,17 +203,10 @@ export default function InventoryPage() {
         body: JSON.stringify({ delta }),
       });
       const data = await res.json();
-      if (res.ok && data.item) {
-        setItems((prev) =>
-          prev.map((i) =>
-            i.id === item.id ? { ...i, quantity: data.item.quantity } : i
-          )
-        );
-      } else {
-        load();
-      }
+      if (res.ok && data.item) setQty(item.id, data.item.quantity);
+      else invalidate();
     } catch {
-      load();
+      invalidate();
     }
   };
 
@@ -229,7 +217,7 @@ export default function InventoryPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Import failed");
       alert(data.message || "Done");
-      await load();
+      invalidate();
     } catch (e) {
       alert(e instanceof Error ? e.message : "Import failed");
     } finally {
@@ -240,7 +228,7 @@ export default function InventoryPage() {
   const remove = async (id: string) => {
     if (!confirm("Delete this inventory item? This cannot be undone.")) return;
     await fetch(`/api/admin/inventory/${id}`, { method: "DELETE" });
-    load();
+    invalidate();
   };
 
   return (
@@ -548,7 +536,7 @@ export default function InventoryPage() {
           onClose={() => setModal({ open: false })}
           onSaved={() => {
             setModal({ open: false });
-            load();
+            invalidate();
           }}
         />
       )}
@@ -567,8 +555,9 @@ function Thumb({ src, alt }: { src: string | null; alt: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={cloudinaryThumb(src, 72) ?? src}
       alt={alt}
+      loading="lazy"
       className="w-9 h-9 rounded-md object-cover bg-gray-100 shrink-0"
     />
   );

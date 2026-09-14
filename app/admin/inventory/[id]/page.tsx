@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -91,6 +92,7 @@ const inputCls =
 export default function InventoryItemPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [item, setItem] = useState<Item | null>(null);
   const [siblings, setSiblings] = useState<Sibling[]>([]);
   const [loading, setLoading] = useState(true);
@@ -197,6 +199,7 @@ export default function InventoryItemPage() {
       });
       if (!res.ok) throw new Error("Save failed");
       await load();
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
     } catch (e) {
       alert(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -207,6 +210,7 @@ export default function InventoryItemPage() {
   const remove = async () => {
     if (!confirm("Delete this item? This cannot be undone.")) return;
     await fetch(`/api/admin/inventory/${id}`, { method: "DELETE" });
+    queryClient.invalidateQueries({ queryKey: ["inventory"] });
     router.push("/admin/inventory");
   };
 

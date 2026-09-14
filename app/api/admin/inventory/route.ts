@@ -24,9 +24,26 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // List view only needs the cover image + core fields — omit the heavy
+    // images[] gallery and detail-only text to keep the payload small/fast.
     const items = await prisma.inventoryItem.findMany({
       where,
       orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      select: {
+        id: true,
+        name: true,
+        brand: true,
+        category: true,
+        size: true,
+        sku: true,
+        imageUrl: true,
+        costPrice: true,
+        sellingPrice: true,
+        quantity: true,
+        notes: true,
+        productId: true,
+        isActive: true,
+      },
     });
 
     return NextResponse.json({
