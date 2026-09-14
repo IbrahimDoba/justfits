@@ -614,12 +614,14 @@ enum ExpenseCategory {
 model InventoryItem {
   id String @id @default(cuid())
 
-  name     String
-  brand    String? // e.g. Benz, BMW, Ferrari
+  name        String
+  brand       String? // e.g. Benz, BMW, Ferrari
+  description String? // product caption/description shown on the shop detail page
   category InventoryCategory @default(OTHER) // CAP / SHIRT / OTHER — drives grouping & filters
   size     String? // e.g. L, XL, XXL, 3XL for shirts; null for one-size caps
   sku      String?
-  imageUrl String? // product photo (shared across sizes of the same product)
+  imageUrl String? // cover photo (images[0]); used in grid, thumbnails, invoices
+  images   String[] @default([]) // full gallery (shared across sizes of the same product)
 
   costPrice    Decimal? @db.Decimal(10, 2) // what it costs you
   sellingPrice Decimal? @db.Decimal(10, 2) // default sale price

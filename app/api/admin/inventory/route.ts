@@ -73,9 +73,16 @@ export async function POST(request: NextRequest) {
         name,
         category,
         brand: body.brand?.trim() || null,
+        description: body.description?.trim() || null,
         size: body.size?.trim() || null,
         sku: body.sku?.trim() || null,
-        imageUrl: body.imageUrl?.trim() || null,
+        images: Array.isArray(body.images)
+          ? body.images.map((u: unknown) => String(u).trim()).filter(Boolean)
+          : [],
+        imageUrl:
+          (Array.isArray(body.images) && body.images[0]?.trim?.()) ||
+          body.imageUrl?.trim() ||
+          null,
         costPrice: num(body.costPrice),
         sellingPrice: num(body.sellingPrice),
         quantity: Math.max(0, parseInt(body.quantity, 10) || 0),

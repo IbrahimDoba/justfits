@@ -32,8 +32,10 @@ export interface ShopListProduct {
 interface Group {
   name: string;
   brand: string | null;
+  description: string | null;
   category: string;
   imageUrl: string | null;
+  images: string[];
   prices: number[];
   variants: { id: string; size: string | null; price: number; stock: number }[];
   totalStock: number;
@@ -51,13 +53,16 @@ async function getInventoryGroups(): Promise<Group[]> {
       {
         name: i.name,
         brand: i.brand,
+        description: i.description,
         category: i.category,
         imageUrl: null,
+        images: [],
         prices: [],
         variants: [],
         totalStock: 0,
       };
     if (!g.imageUrl && i.imageUrl) g.imageUrl = i.imageUrl;
+    if (g.images.length === 0 && i.images?.length) g.images = i.images;
     const price = i.sellingPrice != null ? Number(i.sellingPrice) : 0;
     if (i.sellingPrice != null) g.prices.push(price);
     g.variants.push({ id: i.id, size: i.size, price, stock: i.quantity });
@@ -126,15 +131,18 @@ export async function getInventoryProductBySlug(slug: string) {
   const sizeList = g.variants
     .map((v) => v.size)
     .filter((s): s is string => !!s);
-  const description = [
-    g.brand
-      ? `Premium ${g.brand} ${kind} from JUSTFITS.`
-      : `Premium car-themed ${kind} from JUSTFITS.`,
-    sizeList.length ? `Available sizes: ${sizeList.join(", ")}.` : "",
-    "Message us on WhatsApp to order — we'll confirm your size, payment and delivery.",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  // Use the saved (or AI-generated) caption when present, else a sensible default.
+  const description =
+    g.description?.trim() ||
+    [
+      g.brand
+        ? `Premium ${g.brand} ${kind} from JUSTFITS.`
+        : `Premium car-themed ${kind} from JUSTFITS.`,
+      sizeList.length ? `Available sizes: ${sizeList.join(", ")}.` : "",
+      "Message us on WhatsApp to order — we'll confirm your size, payment and delivery.",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
   const product = {
     id: `inv_${slug}`,
@@ -143,7 +151,7 @@ export async function getInventoryProductBySlug(slug: string) {
     description,
     price: lowest(g.prices),
     compareAtPrice: null as number | null,
-    images: g.imageUrl ? [g.imageUrl] : [],
+    images: g.images.length ? g.images : g.imageUrl ? [g.imageUrl] : [],
     category: cat(g.category).name,
     categorySlug: cat(g.category).slug,
     sizes: g.variants.map((v) => v.size ?? "One Size"),

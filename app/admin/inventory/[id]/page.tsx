@@ -10,16 +10,22 @@ import {
   Upload,
   Image as ImageIcon,
   Save,
+  X,
+  Sparkles,
+  Wand2,
 } from "lucide-react";
+import AiImageGeneratorModal from "@/components/admin/AiImageGeneratorModal";
 
 interface Item {
   id: string;
   name: string;
   brand: string | null;
+  description: string | null;
   category: "CAP" | "SHIRT" | "OTHER";
   size: string | null;
   sku: string | null;
   imageUrl: string | null;
+  images: string[];
   costPrice: number | null;
   sellingPrice: number | null;
   quantity: number;
@@ -73,6 +79,8 @@ export default function InventoryItemPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [genCaption, setGenCaption] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,16 +107,59 @@ export default function InventoryItemPage() {
     setDirty(true);
   };
 
-  const onUpload = async (file?: File) => {
-    if (!file) return;
+  const gallery = (it: Item) =>
+    it.images?.length ? it.images : it.imageUrl ? [it.imageUrl] : [];
+
+  const setGallery = (next: string[]) => {
+    setItem((it) => (it ? { ...it, images: next, imageUrl: next[0] ?? null } : it));
+    setDirty(true);
+  };
+
+  const onUpload = async (files?: FileList | null) => {
+    if (!files || files.length === 0 || !item) return;
     setUploading(true);
     try {
-      const url = await uploadToCloudinary(file);
-      set("imageUrl", url);
+      const urls: string[] = [];
+      for (const f of Array.from(files)) urls.push(await uploadToCloudinary(f));
+      setGallery([...gallery(item), ...urls]);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const removeImage = (url: string) => {
+    if (!item) return;
+    setGallery(gallery(item).filter((u) => u !== url));
+  };
+
+  const makeCover = (url: string) => {
+    if (!item) return;
+    setGallery([url, ...gallery(item).filter((u) => u !== url)]);
+  };
+
+  const generateCaption = async () => {
+    if (!item?.name.trim()) {
+      alert("Give the product a name first.");
+      return;
+    }
+    setGenCaption(true);
+    try {
+      const res = await fetch("/api/admin/generate-product-details", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName: item.brand ? `${item.name} (${item.brand})` : item.name,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      if (data.description) set("description", data.description);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed to generate caption");
+    } finally {
+      setGenCaption(false);
     }
   };
 
@@ -177,16 +228,59 @@ export default function InventoryItemPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6">
-        {/* Image column */}
+        {/* Image gallery column */}
         <div>
+          {/* Cover / first image */}
           <div className="aspect-square w-full rounded-xl border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
-            {item.imageUrl ? (
+            {gallery(item)[0] ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+              <img
+                src={gallery(item)[0]}
+                alt={item.name}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <ImageIcon size={48} className="text-gray-300" />
             )}
           </div>
+
+          {/* Thumbnails */}
+          {gallery(item).length > 0 && (
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {gallery(item).map((url, idx) => (
+                <div
+                  key={url + idx}
+                  className={`relative aspect-square rounded-lg overflow-hidden border ${
+                    idx === 0 ? "border-black" : "border-gray-200"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  {idx === 0 && (
+                    <span className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[9px] text-center py-0.5">
+                      Cover
+                    </span>
+                  )}
+                  <button
+                    onClick={() => removeImage(url)}
+                    title="Remove"
+                    className="absolute top-0.5 right-0.5 bg-white/90 text-gray-600 hover:text-red-600 rounded-full p-0.5"
+                  >
+                    <X size={12} />
+                  </button>
+                  {idx !== 0 && (
+                    <button
+                      onClick={() => makeCover(url)}
+                      title="Make cover"
+                      className="absolute bottom-0.5 left-0.5 bg-white/90 text-gray-700 hover:text-black rounded px-1 text-[9px]"
+                    >
+                      Cover
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <label className="mt-3 flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
             {uploading ? (
@@ -194,28 +288,26 @@ export default function InventoryItemPage() {
             ) : (
               <Upload size={15} />
             )}
-            {uploading ? "Uploading…" : "Upload new image"}
+            {uploading ? "Uploading…" : "Upload image(s)"}
             <input
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
-              onChange={(e) => onUpload(e.target.files?.[0])}
+              onChange={(e) => onUpload(e.target.files)}
             />
           </label>
 
-          <div className="mt-2">
-            <label className="text-[11px] font-medium text-gray-500">
-              …or paste an image URL
-            </label>
-            <input
-              value={item.imageUrl ?? ""}
-              onChange={(e) => set("imageUrl", e.target.value || null)}
-              placeholder="https://…"
-              className={`${inputCls} mt-1`}
-            />
-          </div>
+          <button
+            onClick={() => setAiModalOpen(true)}
+            className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-violet-700 bg-violet-50 border border-violet-100 hover:bg-violet-100"
+          >
+            <Wand2 size={15} /> Generate image with AI
+          </button>
+
           <p className="text-[11px] text-gray-400 mt-2">
-            The image is shared across all sizes of this product.
+            Upload several photos. The first (cover) shows in the shop grid;
+            the rest appear in the product page gallery. Shared across all sizes.
           </p>
         </div>
 
@@ -271,6 +363,34 @@ export default function InventoryItemPage() {
             <Field label="Notes" full>
               <input value={item.notes ?? ""} onChange={(e) => set("notes", e.target.value || null)} className={inputCls} />
             </Field>
+
+            <div className="col-span-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-600">
+                  Caption / description{" "}
+                  <span className="font-normal text-gray-400">(shown on the shop page)</span>
+                </span>
+                <button
+                  onClick={generateCaption}
+                  disabled={genCaption}
+                  className="flex items-center gap-1 text-xs font-medium text-violet-700 hover:text-violet-900 disabled:opacity-50"
+                >
+                  {genCaption ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <Sparkles size={13} />
+                  )}
+                  Generate with AI
+                </button>
+              </div>
+              <textarea
+                value={item.description ?? ""}
+                onChange={(e) => set("description", e.target.value || null)}
+                rows={3}
+                placeholder="Leave blank to auto-generate a default caption, or write/generate one."
+                className={`${inputCls} mt-1 resize-y`}
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -310,6 +430,14 @@ export default function InventoryItemPage() {
           )}
         </div>
       </div>
+
+      <AiImageGeneratorModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        productName={item.brand ? `${item.name} (${item.brand})` : item.name}
+        existingImages={gallery(item)}
+        onImageGenerated={(url) => setGallery([...gallery(item), url])}
+      />
     </div>
   );
 }

@@ -62,6 +62,8 @@ export async function PATCH(
     const data: Prisma.InventoryItemUpdateInput = {};
     if (body.name !== undefined) data.name = String(body.name).trim();
     if (body.brand !== undefined) data.brand = body.brand?.trim() || null;
+    if (body.description !== undefined)
+      data.description = body.description?.trim() || null;
     if (body.category !== undefined && ["CAP", "SHIRT", "OTHER"].includes(body.category))
       data.category = body.category;
     if (body.size !== undefined) data.size = body.size?.trim() || null;
@@ -73,15 +75,28 @@ export async function PATCH(
       data.quantity = Math.max(0, parseInt(body.quantity, 10) || 0);
     if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
     if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
-    if (body.imageUrl !== undefined) data.imageUrl = body.imageUrl?.trim() || null;
+
+    // Gallery: `images` is the source; the cover (imageUrl) is images[0].
+    let galleryChanged = false;
+    if (Array.isArray(body.images)) {
+      const gallery = body.images
+        .map((u: unknown) => String(u).trim())
+        .filter(Boolean);
+      data.images = gallery;
+      data.imageUrl = gallery[0] || null;
+      galleryChanged = true;
+    } else if (body.imageUrl !== undefined) {
+      data.imageUrl = body.imageUrl?.trim() || null;
+      galleryChanged = true;
+    }
 
     const item = await prisma.inventoryItem.update({ where: { id }, data });
 
-    // One image per product: propagate the photo to every size of this product.
-    if (body.imageUrl !== undefined) {
+    // Images are shared across all sizes of a product — propagate them.
+    if (galleryChanged) {
       await prisma.inventoryItem.updateMany({
         where: { name: item.name, id: { not: item.id } },
-        data: { imageUrl: item.imageUrl },
+        data: { images: item.images, imageUrl: item.imageUrl },
       });
     }
 
