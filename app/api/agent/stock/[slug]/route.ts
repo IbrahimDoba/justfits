@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAgentAuth } from "@/lib/agent/auth";
 import { getAgentProductBySlug } from "@/lib/agent/catalog";
 
 // GET /api/agent/stock/<slug>
 // Dailzero agent tool: quick availability check for one product.
-// Bearer-token protected.
+// Public, read-only.
 export const dynamic = "force-dynamic";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const denied = checkAgentAuth(req);
-  if (denied) return denied;
-
   try {
     const { slug } = await params;
     const product = await getAgentProductBySlug(slug);

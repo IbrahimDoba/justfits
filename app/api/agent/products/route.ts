@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkAgentAuth } from "@/lib/agent/auth";
 import { searchAgentProducts } from "@/lib/agent/catalog";
 
 // GET /api/agent/products?q=<query>&limit=<n>&all=<0|1>
-// Dailzero agent tool: search live inventory. Bearer-token protected.
+// Dailzero agent tool: search live inventory. Public, read-only — exposes only
+// customer-safe fields (selling price, per-size stock, image; never cost).
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const denied = checkAgentAuth(req);
-  if (denied) return denied;
-
   try {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q") || "";
