@@ -1,11 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
+import Image, { type ImageLoaderProps } from "next/image";
 import { motion } from "framer-motion";
-import { Loader2, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+
+// Serve right-sized, auto-format/quality images straight from Cloudinary's CDN
+// (no full-res originals, no Vercel optimizer round-trip).
+function cloudinaryLoader({ src, width, quality }: ImageLoaderProps): string {
+  const marker = "/upload/";
+  const i = src.indexOf(marker);
+  if (i === -1 || src.startsWith("data:")) return src;
+  const rest = src.slice(i + marker.length);
+  if (/^[a-z]_/.test(rest)) return src; // already has a transform
+  const t = `f_auto,q_${quality || "auto"},c_fill,w_${width}`;
+  return `${src.slice(0, i + marker.length)}${t}/${rest}`;
+}
+
+// Tiny neutral blur shown while a product image loads (browser-safe SVG URI).
+const BLUR =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='10'%3E%3Crect width='100%25' height='100%25' fill='%23f1f1f2'/%3E%3C/svg%3E";
 
 interface CatalogueProduct {
   name: string;
@@ -149,8 +165,20 @@ export function CatalogueBrowser() {
       {/* Grid */}
       <section className="container mx-auto px-6 py-10">
         {loading ? (
-          <div className="flex items-center justify-center h-64 text-gray-400">
-            <Loader2 className="animate-spin" size={28} />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-3xl overflow-hidden shadow-lg"
+              >
+                <div className="aspect-[4/5] bg-gray-100 animate-pulse" />
+                <div className="p-4 space-y-2">
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-1/3" />
+                  <div className="h-9 bg-gray-100 rounded-xl animate-pulse mt-3" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center text-gray-400 py-20">
@@ -173,10 +201,14 @@ export function CatalogueBrowser() {
                   <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
                     {p.imageUrl ? (
                       <Image
+                        loader={cloudinaryLoader}
                         src={p.imageUrl}
                         alt={p.name}
                         fill
-                        sizes="(max-width:768px) 50vw, 25vw"
+                        sizes="(max-width:768px) 50vw, (max-width:1024px) 33vw, 25vw"
+                        loading="lazy"
+                        placeholder="blur"
+                        blurDataURL={BLUR}
                         className="object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
