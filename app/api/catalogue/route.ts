@@ -19,8 +19,22 @@ export async function GET() {
       prisma.inventoryItem.findMany({
         where: { isActive: true, quantity: { gt: 0 } },
         orderBy: [{ category: "asc" }, { name: "asc" }],
+        select: {
+          name: true,
+          brand: true,
+          category: true,
+          size: true,
+          quantity: true,
+          sellingPrice: true,
+          imageUrl: true,
+        },
       }),
-      prisma.storeSetting.findUnique({ where: { id: "default" } }).catch(() => null),
+      prisma.storeSetting
+        .findUnique({
+          where: { id: "default" },
+          select: { storePhone: true, storeName: true },
+        })
+        .catch(() => null),
     ]);
 
     // Group by product name (a shirt spans several size rows).

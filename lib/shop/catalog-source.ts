@@ -35,16 +35,28 @@ interface Group {
   description: string | null;
   category: string;
   imageUrl: string | null;
-  images: string[];
   prices: number[];
   variants: { id: string; size: string | null; price: number; stock: number }[];
   totalStock: number;
 }
 
 async function getInventoryGroups(): Promise<Group[]> {
+  // Only the cover (imageUrl) is needed for lists/catalogue — never fetch the
+  // full images[] gallery here (keeps data transfer minimal).
   const items = await prisma.inventoryItem.findMany({
     where: { isActive: true, quantity: { gt: 0 } },
     orderBy: [{ category: "asc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      brand: true,
+      description: true,
+      category: true,
+      size: true,
+      quantity: true,
+      sellingPrice: true,
+      imageUrl: true,
+    },
   });
   const map = new Map<string, Group>();
   for (const i of items) {
@@ -56,13 +68,11 @@ async function getInventoryGroups(): Promise<Group[]> {
         description: i.description,
         category: i.category,
         imageUrl: null,
-        images: [],
         prices: [],
         variants: [],
         totalStock: 0,
       };
     if (!g.imageUrl && i.imageUrl) g.imageUrl = i.imageUrl;
-    if (g.images.length === 0 && i.images?.length) g.images = i.images;
     const price = i.sellingPrice != null ? Number(i.sellingPrice) : 0;
     if (i.sellingPrice != null) g.prices.push(price);
     g.variants.push({ id: i.id, size: i.size, price, stock: i.quantity });
@@ -116,6 +126,17 @@ export async function getInventoryProductBySlug(slug: string) {
   const g = groups.find((x) => inventorySlug(x.name) === slug);
   if (!g) return null;
 
+  // Fetch the gallery only for this one product (not for every list request).
+  const withImages = await prisma.inventoryItem.findFirst({
+    where: { name: g.name, images: { isEmpty: false } },
+    select: { images: true },
+  });
+  const gallery = withImages?.images?.length
+    ? withImages.images
+    : g.imageUrl
+      ? [g.imageUrl]
+      : [];
+
   const variants = g.variants.map((v) => ({
     id: v.id,
     sku: v.id,
@@ -151,7 +172,7 @@ export async function getInventoryProductBySlug(slug: string) {
     description,
     price: lowest(g.prices),
     compareAtPrice: null as number | null,
-    images: g.images.length ? g.images : g.imageUrl ? [g.imageUrl] : [],
+    images: gallery,
     category: cat(g.category).name,
     categorySlug: cat(g.category).slug,
     sizes: g.variants.map((v) => v.size ?? "One Size"),
