@@ -66,43 +66,23 @@ async function fetchWithTimeout(
   }
 }
 
+// Uploads through our own same-origin API (server does the Cloudinary upload),
+// so the browser never hits cloudinary.com directly.
 async function uploadToCloudinary(file: File): Promise<string> {
-  const timestamp = Math.round(Date.now() / 1000);
-  const folder = "justfits/inventory";
-  const paramsToSign = { timestamp, folder };
-  const sigRes = await fetchWithTimeout(
-    "/api/admin/upload/sign",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paramsToSign }),
-    },
-    30000,
-    "Signing the upload"
-  );
-  if (!sigRes.ok) throw new Error("Failed to sign upload");
-  const { signature } = await sigRes.json();
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY;
-  if (!cloudName || !apiKey) throw new Error("Cloudinary not configured");
   const fd = new FormData();
   fd.append("file", file);
-  fd.append("api_key", apiKey);
-  fd.append("timestamp", String(timestamp));
-  fd.append("signature", signature);
-  fd.append("folder", folder);
-  const up = await fetchWithTimeout(
-    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+  const res = await fetchWithTimeout(
+    "/api/admin/inventory/upload",
     { method: "POST", body: fd },
     120000,
     "Uploading the image"
   );
-  if (!up.ok) {
-    const err = await up.json().catch(() => ({}));
-    throw new Error(err?.error?.message || "Cloudinary rejected the upload.");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || "Upload failed.");
   }
-  const data = await up.json();
-  return data.secure_url as string;
+  const data = await res.json();
+  return data.url as string;
 }
 
 const inputCls =
