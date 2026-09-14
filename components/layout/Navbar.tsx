@@ -17,7 +17,7 @@ import {
 import { useCart } from "@/context/CartContext";
 
 const navLinks = [
-  { label: "Shop", href: "/shop" },
+  { label: "Shop", href: "/catalogue" },
   { label: "About", href: "/about" },
 ];
 
