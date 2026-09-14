@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db/prisma";
-import { getInventoryListProducts, type ShopListProduct } from "@/lib/shop/catalog-source";
+import { getInventoryListProducts } from "@/lib/shop/catalog-source";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/products - Public product list.
-// Sourced from inventory (single source of truth), merged with any legacy
-// catalog products whose slug isn't already covered by inventory.
+// GET /api/products - Public product list, sourced entirely from inventory
+// (single source of truth). Legacy catalog products are no longer listed here
+// (their data remains in the DB and old detail links still resolve).
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -17,54 +16,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
-    // 1) Inventory-derived products (the source of truth)
-    const inventoryProducts = await getInventoryListProducts();
-    const invSlugs = new Set(inventoryProducts.map((p) => p.slug));
-
-    // 2) Legacy catalog products not represented in inventory (nothing lost)
-    const legacy = await prisma.product.findMany({
-      where: { isActive: true },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        basePrice: true,
-        featured: true,
-        category: { select: { name: true, slug: true } },
-        variants: {
-          where: { isAvailable: true },
-          select: { price: true, compareAtPrice: true, stockQuantity: true },
-        },
-        images: { orderBy: { position: "asc" }, take: 1, select: { url: true } },
-      },
-    });
-
-    const legacyProducts: ShopListProduct[] = legacy
-      .filter((p) => !invSlugs.has(p.slug))
-      .map((p) => {
-        const stock = p.variants.reduce((s, v) => s + v.stockQuantity, 0);
-        const prices = p.variants.map((v) => Number(v.price));
-        const compare = p.variants.find((v) => v.compareAtPrice)?.compareAtPrice;
-        return {
-          id: p.id,
-          name: p.name,
-          slug: p.slug,
-          description: "",
-          price: prices.length ? Math.min(...prices) : Number(p.basePrice),
-          compareAtPrice: compare ? Number(compare) : null,
-          image: p.images[0]?.url || null,
-          images: p.images.map((i) => i.url),
-          category: p.category.name,
-          categorySlug: p.category.slug,
-          sizes: [],
-          inStock: stock > 0,
-          featured: p.featured,
-          variants: [],
-          hasImage: !!p.images[0]?.url,
-        };
-      });
-
-    let all = [...inventoryProducts, ...legacyProducts];
+    let all = await getInventoryListProducts();
 
     // Filters
     if (search) {
