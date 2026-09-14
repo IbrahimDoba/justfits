@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/db/prisma";
+import { getInventoryProductBySlug } from "@/lib/shop/catalog-source";
 
 export async function getProductBySlug(slug: string) {
+  // Inventory is the source of truth — resolve inventory products first so their
+  // detail pages render (fall back to the legacy catalog for old slugs).
+  const fromInventory = await getInventoryProductBySlug(slug);
+  if (fromInventory) return fromInventory;
+
   const product = await prisma.product.findUnique({
     where: { slug, isActive: true },
     include: {

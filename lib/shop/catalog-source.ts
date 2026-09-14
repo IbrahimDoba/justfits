@@ -113,7 +113,7 @@ export async function getInventoryProductBySlug(slug: string) {
 
   const variants = g.variants.map((v) => ({
     id: v.id,
-    sku: null as string | null,
+    sku: v.id,
     name: g.name,
     size: v.size ?? "One Size",
     color: "",
@@ -122,11 +122,25 @@ export async function getInventoryProductBySlug(slug: string) {
     stockQuantity: v.stock,
   }));
 
+  const kind = g.category === "SHIRT" ? "shirt" : g.category === "CAP" ? "cap" : "piece";
+  const sizeList = g.variants
+    .map((v) => v.size)
+    .filter((s): s is string => !!s);
+  const description = [
+    g.brand
+      ? `Premium ${g.brand} ${kind} from JUSTFITS.`
+      : `Premium car-themed ${kind} from JUSTFITS.`,
+    sizeList.length ? `Available sizes: ${sizeList.join(", ")}.` : "",
+    "Message us on WhatsApp to order — we'll confirm your size, payment and delivery.",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   const product = {
     id: `inv_${slug}`,
     name: g.name,
     slug,
-    description: g.brand ? `${g.brand} — premium car-themed piece.` : "",
+    description,
     price: lowest(g.prices),
     compareAtPrice: null as number | null,
     images: g.imageUrl ? [g.imageUrl] : [],
@@ -136,7 +150,15 @@ export async function getInventoryProductBySlug(slug: string) {
     inStock: g.totalStock > 0,
     featured: false,
     variants,
-    reviews: [] as unknown[],
+    reviews: [] as {
+      id: string;
+      rating: number;
+      title: string | null;
+      comment: string;
+      isVerified: boolean;
+      createdAt: string;
+      user: { id: string; name: string | null; image: string | null };
+    }[],
     avgRating: 0,
     reviewCount: 0,
     ratingDistribution: [0, 0, 0, 0, 0],
