@@ -40,7 +40,7 @@ function formatPrice(price: number): string {
 
 export default function ShopPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [sortBy, setSortBy] = useState("featured");
+  const [sortBy, setSortBy] = useState("price-high");
 
   // Use query hooks instead of manual state management
   const { data: categories = [], isLoading: categoriesLoading } =
