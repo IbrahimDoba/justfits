@@ -15,6 +15,7 @@ export interface ShopListProduct {
   id: string;
   name: string;
   slug: string;
+  brand: string | null;
   description: string;
   price: number;
   compareAtPrice: number | null;
@@ -91,6 +92,7 @@ export async function getInventoryListProducts(): Promise<ShopListProduct[]> {
     id: `inv_${inventorySlug(g.name)}`,
     name: g.name,
     slug: inventorySlug(g.name),
+    brand: g.brand,
     description: "",
     price: lowest(g.prices),
     compareAtPrice: null,

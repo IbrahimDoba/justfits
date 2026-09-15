@@ -21,6 +21,7 @@ interface UseProductsOptions {
   category?: string;
   sort?: string;
   limit?: number;
+  search?: string;
   enabled?: boolean;
 }
 
@@ -29,17 +30,19 @@ export function useProducts(options: UseProductsOptions = {}) {
     category = "all",
     sort = "featured",
     limit = 50,
+    search = "",
     enabled = true,
   } = options;
 
   return useQuery({
-    queryKey: ["products", { category, sort, limit }],
+    queryKey: ["products", { category, sort, limit, search }],
     queryFn: async () => {
       const params = new URLSearchParams({
         category,
         sort,
         limit: limit.toString(),
       });
+      if (search) params.set("search", search);
       const res = await fetch(`/api/products?${params.toString()}`);
       if (!res.ok) {
         throw new Error("Failed to fetch products");

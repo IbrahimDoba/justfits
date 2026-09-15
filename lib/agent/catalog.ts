@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { inventorySlug } from "@/lib/inventory/slug";
+import { matchScore, tokenize } from "@/lib/shop/search";
 
 // Read-only catalogue shaped for the Dailzero WhatsApp agent.
 // Sourced live from inventory (the single source of truth). Exposes ONLY
@@ -97,34 +98,6 @@ function toProduct(g: Group): AgentProduct {
   };
 }
 
-// Remove everything but a-z0-9 so "red bull" and "redbull" compare equal.
-const collapse = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-// Break a query into meaningful tokens (drops punctuation and 1-char noise).
-const tokenize = (s: string) =>
-  s
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((t) => t.length >= 2);
-
-// Score how well a group matches a set of query tokens. Each token counts once;
-// a token hits if it appears in the haystack, in the space-collapsed haystack
-// ("redbull" → "red bull"), or as a simple singular/plural of a present word.
-function scoreGroup(g: Group, tokens: string[], collapsedHay: string, hay: string) {
-  let score = 0;
-  for (const t of tokens) {
-    const singular = t.endsWith("s") ? t.slice(0, -1) : t;
-    if (
-      hay.includes(t) ||
-      collapsedHay.includes(collapse(t)) ||
-      (singular.length >= 2 && hay.includes(singular)) ||
-      hay.includes(`${t}s`)
-    ) {
-      score++;
-    }
-  }
-  return score;
-}
-
 // Fuzzy, token-based search across name + brand + category. Word order and
 // spacing don't matter ("red bull racing f1 shirt", "redbull shirt" both hit
 // "Red Bull Racing Shirt"). Results ranked by how many query words match, then
@@ -148,9 +121,8 @@ export async function searchAgentProducts(
 
   return inStockOnly
     .map((g) => {
-      const hay = `${g.name} ${g.brand ?? ""} ${CAT[g.category] ?? ""}`.toLowerCase();
-      const collapsedHay = collapse(hay);
-      return { g, score: scoreGroup(g, tokens, collapsedHay, hay) };
+      const hay = `${g.name} ${g.brand ?? ""} ${CAT[g.category] ?? ""}`;
+      return { g, score: matchScore(hay, tokens) };
     })
     .filter((r) => r.score > 0)
     .sort(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getInventoryListProducts } from "@/lib/shop/catalog-source";
+import { matchScore, tokenize } from "@/lib/shop/search";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +20,23 @@ export async function GET(request: NextRequest) {
     let all = await getInventoryListProducts();
 
     // Filters
+    // Fuzzy, token-based search across name + brand + category (word order and
+    // spacing don't matter), ranked so the best matches lead. Powers the
+    // /shop/[filter] brand/category landing pages.
+    let searchRanked = false;
     if (search) {
-      all = all.filter(
-        (p) =>
-          p.name.toLowerCase().includes(search) ||
-          p.category.toLowerCase().includes(search)
-      );
+      const tokens = tokenize(search);
+      if (tokens.length > 0) {
+        all = all
+          .map((p) => ({
+            p,
+            score: matchScore(`${p.name} ${p.brand ?? ""} ${p.category}`, tokens),
+          }))
+          .filter((r) => r.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .map((r) => r.p);
+        searchRanked = true;
+      }
     }
     if (category && category !== "all") {
       all = all.filter((p) => p.categorySlug === category);
@@ -56,7 +68,10 @@ export async function GET(request: NextRequest) {
         all.sort((a, b) => a.name.localeCompare(b.name));
         break;
       case "featured":
-        all.sort((a, b) => Number(b.featured) - Number(a.featured));
+        // Keep search relevance order when a search is driving the list.
+        if (!searchRanked) {
+          all.sort((a, b) => Number(b.featured) - Number(a.featured));
+        }
         break;
       default:
         break;
