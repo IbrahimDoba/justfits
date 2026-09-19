@@ -15,7 +15,6 @@ import { useToast } from "@/components/ui/Toast";
 import { formatPrice } from "@/lib/utils/format";
 import {
   ArrowLeft,
-  Lock,
   Truck,
   CreditCard,
   ShieldCheck,
@@ -113,6 +112,11 @@ export default function CheckoutPage() {
   }>({ price: 3500, freeShippingThreshold: 50000 });
   const [isFetchingRate, setIsFetchingRate] = useState(false);
 
+  // Live payments are paused — checkout hands the order off to WhatsApp instead.
+  // The store's WhatsApp number is resolved from settings (same source as the
+  // shop's Order buttons), with a safe fallback.
+  const [whatsappNumber, setWhatsappNumber] = useState("2348149113328");
+
   const shippingCost = totalPrice >= shippingRate.freeShippingThreshold ? 0 : shippingRate.price;
   const discountAmount = appliedReward
     ? Math.round((totalPrice * appliedReward.discountPercent) / 100)
@@ -158,6 +162,16 @@ export default function CheckoutPage() {
       .catch(() => {})
       .finally(() => setIsFetchingRate(false));
   }, [formData.state]);
+
+  // Resolve the store's WhatsApp number once on mount.
+  useEffect(() => {
+    fetch("/api/catalogue")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.whatsapp) setWhatsappNumber(d.whatsapp);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -487,14 +501,75 @@ export default function CheckoutPage() {
     }
   };
 
+  // Compose a WhatsApp-friendly summary of the order + the customer's details.
+  const buildWhatsAppMessage = (): string => {
+    const stateLabel =
+      nigerianStates.find((s) => s.value === formData.state)?.label ||
+      formData.state;
+
+    const lines: string[] = [
+      "Hi JUSTFITS! I'd like to place an order.",
+      "",
+      "*My order*",
+      ...items.map(
+        (item) =>
+          `- ${item.product.name}${
+            item.size ? ` (Size: ${item.size})` : ""
+          } x${item.quantity} = ${formatPrice(
+            item.product.price * item.quantity
+          )}`
+      ),
+      "",
+      `Subtotal: ${formatPrice(totalPrice)}`,
+    ];
+
+    if (appliedReward) {
+      lines.push(
+        `Discount (${appliedReward.discountPercent}%): -${formatPrice(
+          discountAmount
+        )}`
+      );
+    }
+
+    lines.push(
+      `Shipping: ${shippingCost === 0 ? "Free" : formatPrice(shippingCost)}`,
+      `*Total: ${formatPrice(orderTotal)}*`,
+      "",
+      "*My details*",
+      `Name: ${formData.firstName} ${formData.lastName}`,
+      `Phone: ${formData.phone}`,
+      `Email: ${formData.email}`,
+      `Address: ${formData.address}, ${formData.city}, ${stateLabel}`
+    );
+
+    if (formData.postalCode) lines.push(`Postal code: ${formData.postalCode}`);
+    if (appliedReward) lines.push("", `Reward code: ${appliedReward.code}`);
+
+    return lines.join("\n");
+  };
+
+  const handleWhatsAppOrder = () => {
+    if (!validateForm()) {
+      showToast("Please fill in all required fields", "error");
+      return;
+    }
+
+    if (items.length === 0) {
+      showToast("Your cart is empty", "error");
+      return;
+    }
+
+    const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+      buildWhatsAppMessage()
+    )}`;
+    // Open WhatsApp in a new tab so the customer keeps their cart if they return.
+    window.open(url, "_blank", "noopener,noreferrer");
+    showToast("Opening WhatsApp to confirm your order…", "success");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (paymentMethod === "PAYSTACK") {
-      await handlePaystackPayment();
-    } else {
-      await handleBankTransferPayment();
-    }
+    handleWhatsAppOrder();
   };
 
   // Redirect if cart is empty
@@ -676,7 +751,7 @@ export default function CheckoutPage() {
                         <span className="w-7 h-7 bg-black text-white text-sm rounded-full flex items-center justify-center">
                           3
                         </span>
-                        Payment
+                        Confirm on WhatsApp
                       </h2>
 
                       {/* Payment Method Selector */}
@@ -855,9 +930,11 @@ export default function CheckoutPage() {
                           </motion.div>
                         )} */}
 
-                        <p className="text-xs text-gray-500 flex items-center gap-2">
-                          <Lock size={14} />
-                          Your payment information is encrypted and secure
+                        <p className="text-sm text-gray-600">
+                          Tap the button below and we&apos;ll open WhatsApp with
+                          your order details ready to send. We&apos;ll confirm
+                          your items, delivery and payment with you directly in
+                          the chat.
                         </p>
                       </div>
                     </div>
@@ -892,8 +969,8 @@ export default function CheckoutPage() {
                           </>
                         ) : (
                           <>
-                            <Lock size={18} />
-                            Pay {formatPrice(orderTotal)}
+                            <WhatsAppIcon />
+                            Order on WhatsApp
                           </>
                         )}
                       </button>
@@ -1094,8 +1171,8 @@ export default function CheckoutPage() {
                           </>
                         ) : (
                           <>
-                            <Lock size={18} />
-                            Pay {formatPrice(orderTotal)}
+                            <WhatsAppIcon />
+                            Order on WhatsApp
                           </>
                         )}
                       </button>
@@ -1122,5 +1199,19 @@ export default function CheckoutPage() {
         <Footer />
       </main>
     </>
+  );
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49 0 1.47 1.07 2.89 1.22 3.09.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35zM12 2a10 10 0 00-8.6 15.06L2 22l5.06-1.33A10 10 0 1012 2z" />
+    </svg>
   );
 }
