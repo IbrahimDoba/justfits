@@ -18,7 +18,9 @@ import {
   Edit,
   Loader2,
   Save,
+  ExternalLink,
 } from "lucide-react";
+import { CARRIER_OPTIONS, getCarrier } from "@/lib/shipping/carriers";
 
 interface OrderItem {
   id: string;
@@ -59,7 +61,10 @@ interface Order {
   paymentMethod: string;
   receiptUrl: string | null;
   trackingNumber: string | null;
+  carrier: string | null;
   carrierName: string | null;
+  trackingStatus: string | null;
+  trackingUpdatedAt: string | null;
   internalNotes: string;
   createdAt: string;
   statusHistory: OrderHistory[];
@@ -120,6 +125,7 @@ export default function OrderDetailPage() {
   // Edit State
   const [notes, setNotes] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [carrier, setCarrier] = useState("");
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -130,6 +136,7 @@ export default function OrderDetailPage() {
         setOrder(data.order);
         setNotes(data.order.internalNotes || "");
         setTrackingNumber(data.order.trackingNumber || "");
+        setCarrier(data.order.carrier || "");
       } catch (err) {
         console.error("Error fetching order:", err);
         setError("Failed to load order");
@@ -172,7 +179,7 @@ export default function OrderDetailPage() {
       const response = await fetch(`/api/admin/orders/${order.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes, trackingNumber }),
+        body: JSON.stringify({ notes, trackingNumber, carrier }),
       });
 
       if (!response.ok) throw new Error("Failed to save details");
@@ -184,6 +191,15 @@ export default function OrderDetailPage() {
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  // Open the carrier's tracking page. Their sites don't take the number via
+  // URL, so copy it to the clipboard first for easy pasting.
+  const handleOpenCarrierPage = () => {
+    const info = getCarrier(carrier);
+    if (!info || !trackingNumber) return;
+    navigator.clipboard.writeText(trackingNumber).catch(() => {});
+    window.open(info.trackingPageUrl, "_blank", "noopener,noreferrer");
   };
 
   const copyToClipboard = (text: string) => {
@@ -453,6 +469,23 @@ export default function OrderDetailPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Carrier
+                </label>
+                <select
+                  value={carrier}
+                  onChange={(e) => setCarrier(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black bg-white"
+                >
+                  <option value="">Select carrier</option>
+                  {CARRIER_OPTIONS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tracking Number
                 </label>
                 <input
@@ -463,6 +496,16 @@ export default function OrderDetailPage() {
                   placeholder="Enter tracking number"
                 />
               </div>
+              {carrier && trackingNumber && (
+                <button
+                  onClick={handleOpenCarrierPage}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800 transition-colors"
+                  title="Copies the tracking number and opens the carrier's tracking page"
+                >
+                  <ExternalLink size={14} />
+                  Track on {getCarrier(carrier)?.name}
+                </button>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Internal Notes

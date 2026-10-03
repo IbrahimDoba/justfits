@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { auth } from "@/lib/auth";
 import { awardLoyaltyStamp } from "@/lib/services/loyalty";
 import { sendOrderStatusEmail } from "@/lib/services/email";
+import { getCarrier } from "@/lib/shipping/carriers";
 
 // GET /api/admin/orders/[id] - Get a single order
 export async function GET(
@@ -68,8 +69,11 @@ export async function GET(
         paymentStatus: order.payment?.status.toLowerCase() || "pending",
         paymentMethod: order.payment?.method || "N/A",
         receiptUrl: order.payment?.receiptUrl || null,
-        trackingNumber: null, // Add when schema supports it
-        carrierName: null,
+        trackingNumber: order.trackingNumber,
+        carrier: order.carrier,
+        carrierName: getCarrier(order.carrier)?.name || null,
+        trackingStatus: order.trackingStatus,
+        trackingUpdatedAt: order.trackingUpdatedAt?.toISOString() || null,
         internalNotes: order.notes || "",
         createdAt: order.createdAt.toISOString(),
         statusHistory: [
@@ -103,9 +107,18 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { status, notes } = body;
+    const { status, notes, trackingNumber, carrier } = body;
 
     const newStatus = status?.toUpperCase();
+
+    if (carrier !== undefined && carrier !== null && carrier !== "") {
+      if (!getCarrier(carrier)) {
+        return NextResponse.json(
+          { error: `Unknown carrier: ${carrier}` },
+          { status: 400 }
+        );
+      }
+    }
 
     // Get current order with items and user to check status and reduce stock
     const currentOrder = await prisma.order.findUnique({
@@ -146,6 +159,9 @@ export async function PUT(
         data: {
           status: newStatus,
           notes,
+          trackingNumber:
+            trackingNumber === undefined ? undefined : trackingNumber || null,
+          carrier: carrier === undefined ? undefined : carrier || null,
         },
       });
     });

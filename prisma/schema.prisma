@@ -289,6 +289,12 @@ model Order {
 
   notes String?
 
+  // Carrier tracking (GUO / GIG Logistics)
+  carrier           String? // carrier slug, see lib/shipping/carriers.ts
+  trackingNumber    String?
+  trackingStatus    String? // last status fetched from the carrier
+  trackingUpdatedAt DateTime? // when trackingStatus was last refreshed
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

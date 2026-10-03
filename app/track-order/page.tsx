@@ -52,6 +52,13 @@ interface TrackingResult {
     country: string;
   };
   notes: string | null;
+  tracking: {
+    carrier: string | null;
+    trackingNumber: string;
+    trackingUrl: string | null;
+    status: string | null;
+    statusUpdatedAt: string | null;
+  } | null;
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -267,6 +274,69 @@ function TrackOrderContent() {
                     </div>
                   </div>
                 </div>
+
+                {/* Carrier Tracking */}
+                {result.tracking && (
+                  <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <h2 className="font-heading font-semibold text-sm text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-2">
+                      <Truck size={15} />
+                      Shipment Tracking
+                    </h2>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Carrier</span>
+                      <span className="font-medium">
+                        {result.tracking.carrier}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1.5">
+                      <span className="text-gray-500">Tracking Number</span>
+                      <span className="font-medium font-mono">
+                        {result.tracking.trackingNumber}
+                      </span>
+                    </div>
+                    {result.tracking.status && (
+                      <div className="mt-3 bg-gray-50 rounded-lg p-3">
+                        <p className="text-sm">{result.tracking.status}</p>
+                        {result.tracking.statusUpdatedAt && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Updated{" "}
+                            {new Date(
+                              result.tracking.statusUpdatedAt
+                            ).toLocaleString("en-NG", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {result.tracking.trackingUrl && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard
+                            .writeText(result.tracking!.trackingNumber)
+                            .catch(() => {});
+                          window.open(
+                            result.tracking!.trackingUrl!,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }}
+                        className="mt-4 w-full py-2.5 bg-black text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors"
+                      >
+                        Track on {result.tracking.carrier} →
+                      </button>
+                    )}
+                    {result.tracking.trackingUrl && (
+                      <p className="text-xs text-gray-400 mt-2 text-center">
+                        Your tracking number is copied automatically — paste it
+                        on the carrier&apos;s page.
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Shipping Address */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm">

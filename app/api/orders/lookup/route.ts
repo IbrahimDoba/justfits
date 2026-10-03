@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { getCarrier } from "@/lib/shipping/carriers";
 
 // GET /api/orders/lookup?orderNumber=JF-1234&email=customer@email.com
 // Public endpoint for AI agent / customer support order lookups
@@ -34,6 +35,10 @@ export async function GET(request: NextRequest) {
         tax: true,
         total: true,
         notes: true,
+        carrier: true,
+        trackingNumber: true,
+        trackingStatus: true,
+        trackingUpdatedAt: true,
         shippingAddress: {
           select: {
             firstName: true,
@@ -111,6 +116,15 @@ export async function GET(request: NextRequest) {
         country: order.shippingAddress.country,
       },
       notes: order.notes,
+      tracking: order.trackingNumber
+        ? {
+            carrier: getCarrier(order.carrier)?.name || order.carrier,
+            trackingNumber: order.trackingNumber,
+            trackingUrl: getCarrier(order.carrier)?.trackingPageUrl || null,
+            status: order.trackingStatus,
+            statusUpdatedAt: order.trackingUpdatedAt,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Order lookup error:", error);
