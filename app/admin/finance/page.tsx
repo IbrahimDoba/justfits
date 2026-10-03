@@ -27,7 +27,9 @@ import {
   FileText,
   Info,
   Brain,
+  Truck,
 } from "lucide-react";
+import { CARRIER_OPTIONS, getCarrier } from "@/lib/shipping/carriers";
 
 /* ------------------------------ types ------------------------------ */
 
@@ -45,6 +47,8 @@ interface Sale {
   deliveryFee: number | null;
   deliveryPaidBy: string | null;
   location: string | null;
+  carrier: string | null;
+  trackingNumber: string | null;
   totalCollected: number;
   profit: number | null;
   paymentStatus: PaymentStatus;
@@ -902,6 +906,27 @@ function SalesTable({
               </Td>
               <Td>
                 <div className="flex items-center gap-1 justify-end">
+                  {s.trackingNumber && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard
+                          .writeText(s.trackingNumber!)
+                          .catch(() => {});
+                        const info = getCarrier(s.carrier);
+                        if (info) {
+                          window.open(
+                            info.trackingPageUrl,
+                            "_blank",
+                            "noopener,noreferrer"
+                          );
+                        }
+                      }}
+                      title={`Track ${s.trackingNumber}${getCarrier(s.carrier) ? ` on ${getCarrier(s.carrier)!.name}` : ""} (number is copied)`}
+                      className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded"
+                    >
+                      <Truck size={15} />
+                    </button>
+                  )}
                   <a
                     href={`/admin/finance/invoice/${s.id}`}
                     target="_blank"
@@ -1169,6 +1194,8 @@ function SaleModal({
     deliveryFee: edit?.deliveryFee ?? "",
     deliveryPaidBy: edit?.deliveryPaidBy ?? "",
     location: edit?.location ?? "",
+    carrier: edit?.carrier ?? "",
+    trackingNumber: edit?.trackingNumber ?? "",
     totalCollected: edit?.totalCollected ?? "",
     profit: edit?.profit ?? "",
     paymentStatus: edit?.paymentStatus ?? "PAID",
@@ -1614,6 +1641,28 @@ function SaleModal({
             value={form.location}
             onChange={(e) => set("location", e.target.value)}
             placeholder="e.g. Abuja, Lagos - Lekki"
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Carrier">
+          <select
+            value={form.carrier}
+            onChange={(e) => set("carrier", e.target.value)}
+            className={inputCls}
+          >
+            <option value="">None</option>
+            {CARRIER_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Tracking number">
+          <input
+            value={form.trackingNumber}
+            onChange={(e) => set("trackingNumber", e.target.value)}
+            placeholder="optional — GUO/GIG waybill"
             className={inputCls}
           />
         </Field>

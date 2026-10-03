@@ -533,6 +533,8 @@ model Sale {
   deliveryFee    Decimal? @db.Decimal(10, 2)
   deliveryPaidBy String? // Him / Her / Me / Both / Pickup / None
   location       String? // Delivery/sale location (new records only)
+  carrier        String? // carrier slug (guo/gig), see lib/shipping/carriers.ts
+  trackingNumber String? // carrier waybill/parcel number for shipped sales
 
   totalCollected Decimal  @db.Decimal(10, 2)
   profit         Decimal? @db.Decimal(10, 2) // null = "None yet"

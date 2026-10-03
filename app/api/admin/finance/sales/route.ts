@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth/admin-guard";
+import { getCarrier } from "@/lib/shipping/carriers";
 import type { Prisma } from "@prisma/client";
 
 const PAYMENT_STATUSES = ["PAID", "PARTIAL", "PENDING"] as const;
@@ -191,6 +192,8 @@ export async function POST(request: NextRequest) {
           deliveryFee,
           deliveryPaidBy: body.deliveryPaidBy?.trim() || null,
           location: body.location?.trim() || null,
+          carrier: getCarrier(body.carrier) ? body.carrier : null,
+          trackingNumber: body.trackingNumber?.trim() || null,
           totalCollected,
           profit,
           paymentStatus,

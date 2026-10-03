@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth/admin-guard";
+import { getCarrier } from "@/lib/shipping/carriers";
 import type { Prisma } from "@prisma/client";
 
 const PAYMENT_STATUSES = ["PAID", "PARTIAL", "PENDING"] as const;
@@ -84,6 +85,10 @@ export async function PATCH(
     if (body.paymentStatus !== undefined && PAYMENT_STATUSES.includes(body.paymentStatus))
       data.paymentStatus = body.paymentStatus;
     if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
+    if (body.carrier !== undefined)
+      data.carrier = getCarrier(body.carrier) ? body.carrier : null;
+    if (body.trackingNumber !== undefined)
+      data.trackingNumber = body.trackingNumber?.trim() || null;
 
     // Optional itemised line items — replace the sale's items when provided.
     // Editing does NOT re-deduct inventory stock (stock is only touched at
