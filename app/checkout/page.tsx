@@ -13,6 +13,7 @@ import { ProductImagePlaceholder } from "@/components/ui/ProductImagePlaceholder
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/components/ui/Toast";
 import { formatPrice } from "@/lib/utils/format";
+import { getGuoCenters, GUO_CARRIER_NAME } from "@/lib/shipping/guo-locations";
 import {
   ArrowLeft,
   Truck,
@@ -22,6 +23,7 @@ import {
   X,
   Loader2,
   Check,
+  MapPin,
   // Building2,
 } from "lucide-react";
 
@@ -46,6 +48,9 @@ const nigerianStates = [
   { value: "cross-river", label: "Cross River" },
   { value: "abia", label: "Abia" },
   { value: "ekiti", label: "Ekiti" },
+  { value: "ebonyi", label: "Ebonyi" },
+  { value: "plateau", label: "Plateau" },
+  { value: "taraba", label: "Taraba" },
   { value: "other", label: "Other" },
 ];
 
@@ -733,6 +738,46 @@ export default function CheckoutPage() {
                             required
                           />
                         </div>
+                        {getGuoCenters(formData.state).length > 0 && (
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <MapPin size={16} className="text-black" />
+                              <p className="text-sm font-medium text-black">
+                                {GUO_CARRIER_NAME} pickup centers in{" "}
+                                {
+                                  nigerianStates.find(
+                                    (s) => s.value === formData.state
+                                  )?.label
+                                }
+                              </p>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-3">
+                              We ship interstate orders with {GUO_CARRIER_NAME}.
+                              You can pick up your order from any of these
+                              centers:
+                            </p>
+                            <ul className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                              {getGuoCenters(formData.state).map((center) => (
+                                <li key={center.branch} className="text-sm">
+                                  <p className="font-medium text-black">
+                                    {center.branch}
+                                  </p>
+                                  <p className="text-gray-600">
+                                    {center.address}
+                                    {center.phones.length > 0 && (
+                                      <>
+                                        {" · "}
+                                        <span className="whitespace-nowrap">
+                                          {center.phones.join(", ")}
+                                        </span>
+                                      </>
+                                    )}
+                                  </p>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                         <Input
                           label="Postal Code"
                           name="postalCode"

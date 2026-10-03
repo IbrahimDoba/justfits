@@ -24,6 +24,9 @@ const NIGERIAN_STATES = [
   { value: "cross-river", label: "Cross River" },
   { value: "abia", label: "Abia" },
   { value: "ekiti", label: "Ekiti" },
+  { value: "ebonyi", label: "Ebonyi" },
+  { value: "plateau", label: "Plateau" },
+  { value: "taraba", label: "Taraba" },
   { value: "other", label: "Other" },
 ];
 

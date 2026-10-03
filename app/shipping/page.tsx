@@ -62,13 +62,20 @@ export default function ShippingPage() {
                   </div>
                   
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">Other States</span>
-                    <span className="font-semibold">₦4,000</span>
+                    <span className="font-medium">
+                      All Other States (via GUO Logistics)
+                    </span>
+                    <span className="font-semibold">₦5,000</span>
                   </div>
                 </div>
+                <p className="text-sm text-gray-600">
+                  Interstate orders are shipped with GUO Logistics and can be
+                  picked up at the GUO center nearest to you — the pickup
+                  address for your state is shown at checkout.
+                </p>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
                   <p className="text-green-800 font-medium">
-                    🎉 Free Shipping on orders above ₦60,000!
+                    🎉 Free Shipping on orders above ₦50,000!
                   </p>
                 </div>
               </div>
@@ -99,8 +106,8 @@ export default function ShippingPage() {
                   <li className="flex items-start gap-3">
                     <span className="text-black font-bold mt-1">•</span>
                     <span>
-                      <strong>Abuja, Port Harcourt, Ibadan:</strong> 2 business days
-                      business days
+                      <strong>Abuja, Port Harcourt, Ibadan:</strong> 2 business
+                      days
                     </span>
                   </li>
                   <li className="flex items-start gap-3">
@@ -192,23 +199,12 @@ export default function ShippingPage() {
               </div>
               <div className="space-y-4 text-gray-700 leading-relaxed">
                 <p>
-                  We work with trusted logistics partners to ensure your orders
-                  arrive safely and on time:
+                  All interstate orders are shipped with{" "}
+                  <strong>GUO Logistics</strong>, with pickup centers across
+                  Nigeria. When you place an order, we send your package to the
+                  GUO center nearest to your delivery address — the exact
+                  pickup address for your state is shown at checkout.
                 </p>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-3">
-                    <span className="text-black font-bold mt-1">•</span>
-                    <span>GIG Logistics</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-black font-bold mt-1">•</span>
-                    <span>DHL Express</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="text-black font-bold mt-1">•</span>
-                    <span>Kwik Delivery</span>
-                  </li>
-                </ul>
               </div>
             </div>
 
