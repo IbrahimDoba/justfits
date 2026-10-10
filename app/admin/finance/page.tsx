@@ -28,8 +28,11 @@ import {
   Info,
   Brain,
   Truck,
+  Copy,
+  Check,
+  ExternalLink,
 } from "lucide-react";
-import { CARRIER_OPTIONS, getCarrier } from "@/lib/shipping/carriers";
+import { CARRIER_OPTIONS, getCarrier, CARRIERS } from "@/lib/shipping/carriers";
 
 /* ------------------------------ types ------------------------------ */
 
@@ -159,7 +162,7 @@ const categoryStyles: Record<string, string> = {
   OTHER: "bg-gray-100 text-gray-800",
 };
 
-type Tab = "overview" | "sales" | "expenses" | "analysis";
+type Tab = "overview" | "sales" | "expenses" | "shipments" | "analysis";
 
 /* ------------------------------ page ------------------------------ */
 
@@ -367,7 +370,7 @@ export default function FinancePage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-gray-200 mb-4">
-        {(["overview", "sales", "expenses", "analysis"] as Tab[]).map((tb) => (
+        {(["overview", "sales", "expenses", "shipments", "analysis"] as Tab[]).map((tb) => (
           <button
             key={tb}
             onClick={() => setTab(tb)}
@@ -402,6 +405,8 @@ export default function FinancePage() {
         <OverviewTab summary={summary} />
       ) : tab === "analysis" ? (
         <AnalysisTab />
+      ) : tab === "shipments" ? (
+        <ShipmentsTab sales={sales} />
       ) : (
         <>
           {/* Search */}
@@ -828,6 +833,168 @@ function AnalysisTab() {
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/* --------------------------- shipments tab --------------------------- */
+
+const fmtShipDate = (d: string) => {
+  try {
+    return new Date(d).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+    });
+  } catch {
+    return d;
+  }
+};
+
+function ShipmentsTab({ sales }: { sales: Sale[] }) {
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const shipments = useMemo(
+    () =>
+      sales
+        .filter((s) => s.trackingNumber && s.trackingNumber.trim())
+        .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [sales]
+  );
+
+  // Group by carrier: guo, gig first (in CARRIERS order), then anything with a
+  // tracking number but no carrier set.
+  const groups = useMemo(() => {
+    const order = [...Object.keys(CARRIERS), "unassigned"];
+    const by: Record<string, Sale[]> = {};
+    for (const s of shipments) {
+      const key = s.carrier && CARRIERS[s.carrier] ? s.carrier : "unassigned";
+      (by[key] ??= []).push(s);
+    }
+    return order
+      .filter((k) => by[k]?.length)
+      .map((k) => ({ key: k, carrier: getCarrier(k), rows: by[k] }));
+  }, [shipments]);
+
+  const copy = (s: Sale) => {
+    if (!s.trackingNumber) return;
+    navigator.clipboard.writeText(s.trackingNumber).catch(() => {});
+    setCopiedId(s.id);
+    setTimeout(() => setCopiedId((c) => (c === s.id ? null : c)), 1500);
+  };
+
+  const copyAndOpen = (s: Sale, url: string) => {
+    copy(s);
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  if (shipments.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+        <Truck size={28} className="mb-3" />
+        <p className="text-sm">No sales have a tracking number yet.</p>
+        <p className="text-xs mt-1">
+          Add a carrier and tracking number when editing a sale.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      <p className="text-sm text-gray-500">
+        {shipments.length} shipment{shipments.length === 1 ? "" : "s"} with
+        tracking. Tap a number to copy it, then open the carrier page and paste.
+      </p>
+
+      {groups.map(({ key, carrier, rows }) => (
+        <div key={key}>
+          {/* Carrier header */}
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <Truck size={18} className="text-gray-700" />
+              <h3 className="text-sm font-semibold text-gray-900">
+                {carrier ? carrier.name : "No carrier set"}
+              </h3>
+              <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                {rows.length}
+              </span>
+            </div>
+            {carrier && (
+              <a
+                href={carrier.trackingPageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-700"
+              >
+                Open {carrier.name} <ExternalLink size={13} />
+              </a>
+            )}
+          </div>
+
+          {/* Shipment cards */}
+          <div className="grid gap-2 sm:grid-cols-2">
+            {rows.map((s) => {
+              const copied = copiedId === s.id;
+              return (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-gray-300 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {s.customerName}
+                      </span>
+                      <span className="text-[11px] text-gray-400 shrink-0">
+                        {fmtShipDate(s.date)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">
+                      {s.productText}
+                    </p>
+                    {/* Big, tap-to-copy tracking number */}
+                    <button
+                      onClick={() => copy(s)}
+                      title="Copy tracking number"
+                      className="mt-1.5 inline-flex items-center gap-1.5 font-mono text-base font-semibold text-gray-900 hover:text-black"
+                    >
+                      {s.trackingNumber}
+                      {copied ? (
+                        <Check size={15} className="text-green-600" />
+                      ) : (
+                        <Copy size={14} className="text-gray-400" />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="shrink-0 flex flex-col items-end gap-1.5">
+                    <button
+                      onClick={() => copy(s)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        copied
+                          ? "bg-green-50 text-green-700"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {copied ? <Check size={13} /> : <Copy size={13} />}
+                      {copied ? "Copied" : "Copy"}
+                    </button>
+                    {carrier && (
+                      <button
+                        onClick={() => copyAndOpen(s, carrier.trackingPageUrl)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium hover:bg-gray-700"
+                        title={`Copy number and open ${carrier.name}`}
+                      >
+                        Track <ExternalLink size={12} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
