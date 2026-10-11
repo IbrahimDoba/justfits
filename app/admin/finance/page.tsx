@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -31,6 +31,8 @@ import {
   Copy,
   Check,
   ExternalLink,
+  ChevronDown,
+  ImageIcon,
 } from "lucide-react";
 import { CARRIER_OPTIONS, getCarrier, CARRIERS } from "@/lib/shipping/carriers";
 
@@ -1341,6 +1343,165 @@ function ModalShell({
   );
 }
 
+/* --------------------- product picker (image dropdown) --------------------- */
+
+function ProductPicker({
+  productNames,
+  inventory,
+  value,
+  onPick,
+  inputCls,
+}: {
+  productNames: string[];
+  inventory: InventoryOption[];
+  value: string;
+  onPick: (name: string) => void;
+  inputCls: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Per-product thumbnail + remaining stock across sizes.
+  const meta = useMemo(() => {
+    const m = new Map<string, { image: string | null; left: number }>();
+    for (const n of productNames) {
+      const variants = inventory.filter((v) => v.name === n);
+      m.set(n, {
+        image: variants.find((v) => v.imageUrl)?.imageUrl ?? null,
+        left: variants.reduce((a, v) => a + v.quantity, 0),
+      });
+    }
+    return m;
+  }, [productNames, inventory]);
+
+  // Close on outside click / Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    return q
+      ? productNames.filter((n) => n.toLowerCase().includes(q))
+      : productNames;
+  }, [productNames, query]);
+
+  const selected = value ? meta.get(value) : undefined;
+
+  const Thumb = ({ src }: { src: string | null }) =>
+    src ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt=""
+        className="w-9 h-9 rounded-md object-cover bg-gray-100 shrink-0"
+      />
+    ) : (
+      <div className="w-9 h-9 rounded-md bg-gray-100 flex items-center justify-center shrink-0">
+        <ImageIcon size={15} className="text-gray-300" />
+      </div>
+    );
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`${inputCls} w-full flex items-center gap-2 text-left`}
+      >
+        {value ? (
+          <>
+            <Thumb src={selected?.image ?? null} />
+            <span className="flex-1 min-w-0 truncate text-gray-900">{value}</span>
+            <span className="text-[11px] text-gray-400 shrink-0">
+              {selected && selected.left > 0 ? `${selected.left} left` : "sold out"}
+            </span>
+          </>
+        ) : (
+          <span className="flex-1 text-gray-400">Select product…</span>
+        )}
+        <ChevronDown size={15} className="text-gray-400 shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-gray-100">
+            <div className="relative">
+              <Search
+                size={15}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                autoFocus
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search products…"
+                className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10"
+              />
+            </div>
+          </div>
+          <div className="max-h-72 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-gray-400">
+                No products match “{query}”.
+              </p>
+            ) : (
+              filtered.map((n) => {
+                const m = meta.get(n);
+                const soldOut = !m || m.left === 0;
+                const isSel = n === value;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={soldOut}
+                    onClick={() => {
+                      onPick(n);
+                      setOpen(false);
+                      setQuery("");
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors ${
+                      soldOut
+                        ? "opacity-45 cursor-not-allowed"
+                        : "hover:bg-gray-50"
+                    } ${isSel ? "bg-gray-50" : ""}`}
+                  >
+                    <Thumb src={m?.image ?? null} />
+                    <span className="flex-1 min-w-0 text-sm text-gray-900 leading-snug">
+                      {n}
+                    </span>
+                    <span
+                      className={`text-[11px] shrink-0 ${
+                        soldOut ? "text-red-400" : "text-gray-400"
+                      }`}
+                    >
+                      {soldOut ? "sold out" : `${m!.left} left`}
+                    </span>
+                    {isSel && <Check size={14} className="text-gray-900 shrink-0" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SaleModal({
   edit,
   onClose,
@@ -1626,23 +1787,15 @@ function SaleModal({
                     </button>
                   </div>
 
-                  {/* Step 1: product. Step 2: size (stock shown, sold-out disabled). */}
+                  {/* Step 1: product (image dropdown). Step 2: size (stock shown, sold-out disabled). */}
                   <div className="grid grid-cols-[1fr_auto] gap-2">
-                    <select
+                    <ProductPicker
+                      productNames={productNames}
+                      inventory={inventory}
                       value={productNames.includes(it.name) ? it.name : ""}
-                      onChange={(e) => pickProduct(idx, e.target.value)}
-                      className={`${inputCls} w-full`}
-                    >
-                      <option value="">Select product…</option>
-                      {productNames.map((n) => {
-                        const left = variantsFor(n).reduce((a, v) => a + v.quantity, 0);
-                        return (
-                          <option key={n} value={n} disabled={left === 0}>
-                            {n} {left === 0 ? "— sold out" : `(${left} left)`}
-                          </option>
-                        );
-                      })}
-                    </select>
+                      onPick={(name) => pickProduct(idx, name)}
+                      inputCls={inputCls}
+                    />
                     {variantsFor(it.name).some((v) => v.size) && (
                       <select
                         value={it.inventoryItemId ?? ""}
