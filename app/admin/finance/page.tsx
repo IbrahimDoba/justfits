@@ -1310,7 +1310,7 @@ function Field({
 }
 
 const inputCls =
-  "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10";
+  "w-full min-w-0 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10";
 
 function ModalShell({
   title,
@@ -1326,7 +1326,7 @@ function ModalShell({
       <motion.div
         initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl shadow-xl w-full min-w-0 max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">
           <h3 className="font-semibold text-gray-900">{title}</h3>
@@ -1416,7 +1416,7 @@ function ProductPicker({
     );
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative min-w-0" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -1788,7 +1788,8 @@ function SaleModal({
                   </div>
 
                   {/* Step 1: product (image dropdown). Step 2: size (stock shown, sold-out disabled). */}
-                  <div className="grid grid-cols-[1fr_auto] gap-2">
+                  {/* Stacks on mobile; minmax(0,1fr) lets the picker shrink/truncate instead of overflowing. */}
+                  <div className="flex flex-col sm:grid sm:grid-cols-[minmax(0,1fr)_auto] gap-2">
                     <ProductPicker
                       productNames={productNames}
                       inventory={inventory}
@@ -1800,7 +1801,7 @@ function SaleModal({
                       <select
                         value={it.inventoryItemId ?? ""}
                         onChange={(e) => pickInventory(idx, e.target.value)}
-                        className={`${inputCls} min-w-[9.5rem]`}
+                        className={`${inputCls} w-full sm:w-auto sm:min-w-[9.5rem]`}
                       >
                         <option value="">Size…</option>
                         {variantsFor(it.name).map((v) => (
