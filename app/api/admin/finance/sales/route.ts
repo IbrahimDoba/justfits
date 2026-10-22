@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const to = searchParams.get("to");
 
     const where: Prisma.SaleWhereInput = {};
+    where.brand = searchParams.get("brand") === "CARS" ? "CARS" : "CAPS";
     if (search) {
       where.OR = [
         { customerName: { contains: search, mode: "insensitive" } },
@@ -182,6 +183,7 @@ export async function POST(request: NextRequest) {
     const sale = await prisma.$transaction(async (tx) => {
       const created = await tx.sale.create({
         data: {
+          brand: body.brand === "CARS" ? "CARS" : "CAPS",
           date: body.date ? new Date(body.date) : new Date(),
           customerName,
           customerPhone,

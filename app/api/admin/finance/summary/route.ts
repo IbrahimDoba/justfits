@@ -1,18 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth/admin-guard";
 
 // GET /api/admin/finance/summary - aggregated P&L for the offline ledger
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
+    const brand =
+      request.nextUrl.searchParams.get("brand") === "CARS"
+        ? ("CARS" as const)
+        : ("CAPS" as const);
     const [salesAgg, expenseAgg, expensesByCategory, sales, expenses] =
       await Promise.all([
         prisma.sale.aggregate({
+          where: { brand },
           _sum: {
             totalCollected: true,
             profit: true,
@@ -21,15 +26,24 @@ export async function GET() {
           },
           _count: true,
         }),
-        prisma.expense.aggregate({ _sum: { amount: true }, _count: true }),
+        prisma.expense.aggregate({
+          where: { brand },
+          _sum: { amount: true },
+          _count: true,
+        }),
         prisma.expense.groupBy({
           by: ["category"],
+          where: { brand },
           _sum: { amount: true },
         }),
         prisma.sale.findMany({
+          where: { brand },
           select: { date: true, totalCollected: true, deliveryFee: true },
         }),
-        prisma.expense.findMany({ select: { date: true, amount: true } }),
+        prisma.expense.findMany({
+          where: { brand },
+          select: { date: true, amount: true },
+        }),
       ]);
 
     const totalRevenue = Number(salesAgg._sum.totalCollected || 0);

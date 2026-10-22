@@ -33,12 +33,26 @@ import {
   ExternalLink,
   ChevronDown,
   ImageIcon,
+  Car,
+  ShoppingBag,
 } from "lucide-react";
 import { CARRIER_OPTIONS, getCarrier, CARRIERS } from "@/lib/shipping/carriers";
 
 /* ------------------------------ types ------------------------------ */
 
 type PaymentStatus = "PAID" | "PARTIAL" | "PENDING";
+
+// Sub-brand the ledger is scoped to: the caps shop or JF Cars.
+type BrandKey = "CAPS" | "CARS";
+
+interface Interaction {
+  id: string;
+  date: string;
+  title: string;
+  contact: string | null;
+  amount: number | null;
+  note: string | null;
+}
 
 interface Sale {
   id: string;
@@ -164,15 +178,22 @@ const categoryStyles: Record<string, string> = {
   OTHER: "bg-gray-100 text-gray-800",
 };
 
-type Tab = "overview" | "sales" | "expenses" | "shipments" | "analysis";
+type Tab = "overview" | "sales" | "expenses" | "shipments" | "analysis" | "log";
+
+const TABS_BY_BRAND: Record<BrandKey, Tab[]> = {
+  CAPS: ["overview", "sales", "expenses", "shipments", "analysis"],
+  CARS: ["overview", "sales", "expenses", "log"],
+};
 
 /* ------------------------------ page ------------------------------ */
 
 export default function FinancePage() {
+  const [brand, setBrand] = useState<BrandKey>("CAPS");
   const [tab, setTab] = useState<Tab>("overview");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
@@ -185,20 +206,39 @@ export default function FinancePage() {
     open: boolean;
     edit?: Expense;
   }>({ open: false });
+  const [interactionModal, setInteractionModal] = useState<{
+    open: boolean;
+    edit?: Interaction;
+  }>({ open: false });
+
+  const switchBrand = (b: BrandKey) => {
+    setBrand(b);
+    if (!TABS_BY_BRAND[b].includes(tab)) setTab("overview");
+  };
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
-      const [s, sl, ex] = await Promise.all([
-        fetch("/api/admin/finance/summary").then((r) => r.json()),
-        fetch("/api/admin/finance/sales").then((r) => r.json()),
-        fetch("/api/admin/finance/expenses").then((r) => r.json()),
+      const [s, sl, ex, inter] = await Promise.all([
+        fetch(`/api/admin/finance/summary?brand=${brand}`).then((r) => r.json()),
+        fetch(`/api/admin/finance/sales?brand=${brand}`).then((r) => r.json()),
+        fetch(`/api/admin/finance/expenses?brand=${brand}`).then((r) =>
+          r.json()
+        ),
+        brand === "CARS"
+          ? fetch(`/api/admin/finance/interactions?brand=${brand}`).then((r) =>
+              r.json()
+            )
+          : Promise.resolve({ interactions: [] }),
       ]);
       // Only accept well-formed responses; a non-200 returns { error } instead.
       setSummary(s && s.totals ? s : null);
       setSales(Array.isArray(sl?.sales) ? sl.sales : []);
       setExpenses(Array.isArray(ex?.expenses) ? ex.expenses : []);
+      setInteractions(
+        Array.isArray(inter?.interactions) ? inter.interactions : []
+      );
       if (!s || !s.totals) {
         setLoadError(s?.error || "Failed to load finance summary.");
       }
@@ -208,7 +248,7 @@ export default function FinancePage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [brand]);
 
   useEffect(() => {
     loadAll();
@@ -269,6 +309,12 @@ export default function FinancePage() {
     loadAll();
   };
 
+  const deleteInteraction = async (id: string) => {
+    if (!confirm("Delete this log entry? This cannot be undone.")) return;
+    await fetch(`/api/admin/finance/interactions/${id}`, { method: "DELETE" });
+    loadAll();
+  };
+
   const t = summary?.totals;
 
   return (
@@ -280,10 +326,35 @@ export default function FinancePage() {
             <Wallet size={26} /> Finance
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Offline sales &amp; expenses ledger
+            {brand === "CARS"
+              ? "JF Cars — deals, expenses & interactions"
+              : "Offline sales & expenses ledger"}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Brand switcher */}
+          <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50 p-0.5 mr-2">
+            <button
+              onClick={() => switchBrand("CAPS")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                brand === "CAPS"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              <ShoppingBag size={14} /> JustFits
+            </button>
+            <button
+              onClick={() => switchBrand("CARS")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                brand === "CARS"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              <Car size={14} /> JF Cars
+            </button>
+          </div>
           <button
             onClick={() => setSaleModal({ open: true })}
             className="flex items-center gap-2 px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800"
@@ -296,6 +367,14 @@ export default function FinancePage() {
           >
             <Plus size={16} /> Expense
           </button>
+          {brand === "CARS" && (
+            <button
+              onClick={() => setInteractionModal({ open: true })}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-200"
+            >
+              <Plus size={16} /> Log
+            </button>
+          )}
         </div>
       </div>
 
@@ -340,8 +419,9 @@ export default function FinancePage() {
         />
       </div>
 
-      {/* Empty ledger — offer one-click historical import */}
+      {/* Empty ledger — offer one-click historical import (caps only) */}
       {!loading &&
+        brand === "CAPS" &&
         t &&
         t.salesCount === 0 &&
         t.expensesCount === 0 && (
@@ -372,7 +452,7 @@ export default function FinancePage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-gray-200 mb-4">
-        {(["overview", "sales", "expenses", "shipments", "analysis"] as Tab[]).map((tb) => (
+        {TABS_BY_BRAND[brand].map((tb) => (
           <button
             key={tb}
             onClick={() => setTab(tb)}
@@ -409,6 +489,12 @@ export default function FinancePage() {
         <AnalysisTab />
       ) : tab === "shipments" ? (
         <ShipmentsTab sales={sales} />
+      ) : tab === "log" ? (
+        <InteractionsTable
+          interactions={interactions}
+          onEdit={(i) => setInteractionModal({ open: true, edit: i })}
+          onDelete={deleteInteraction}
+        />
       ) : (
         <>
           {/* Search */}
@@ -443,6 +529,7 @@ export default function FinancePage() {
 
       {saleModal.open && (
         <SaleModal
+          brand={brand}
           edit={saleModal.edit}
           onClose={() => setSaleModal({ open: false })}
           onSaved={() => {
@@ -453,10 +540,22 @@ export default function FinancePage() {
       )}
       {expenseModal.open && (
         <ExpenseModal
+          brand={brand}
           edit={expenseModal.edit}
           onClose={() => setExpenseModal({ open: false })}
           onSaved={() => {
             setExpenseModal({ open: false });
+            loadAll();
+          }}
+        />
+      )}
+      {interactionModal.open && (
+        <InteractionModal
+          brand={brand}
+          edit={interactionModal.edit}
+          onClose={() => setInteractionModal({ open: false })}
+          onSaved={() => {
+            setInteractionModal({ open: false });
             loadAll();
           }}
         />
@@ -1503,10 +1602,12 @@ function ProductPicker({
 }
 
 function SaleModal({
+  brand,
   edit,
   onClose,
   onSaved,
 }: {
+  brand: BrandKey;
   edit?: Sale;
   onClose: () => void;
   onSaved: () => void;
@@ -1688,7 +1789,8 @@ function SaleModal({
       }
       const unlinked = cleanItems.filter((it) => !it.inventoryItemId).length;
       const manualOnly = cleanItems.length === 0 && form.productText.trim();
-      if (unlinked > 0 || manualOnly) {
+      // JF Cars sales never come from inventory — skip the warning there.
+      if (brand !== "CARS" && (unlinked > 0 || manualOnly)) {
         const ok = confirm(
           `${manualOnly ? "This sale" : `${unlinked} item(s)`} isn't linked to inventory, so stock WON'T be deducted and profit can't be auto-calculated. Only continue if the product really isn't in the inventory list.`
         );
@@ -1703,7 +1805,7 @@ function SaleModal({
       const res = await fetch(url, {
         method: edit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, items: cleanItems }),
+        body: JSON.stringify({ ...form, items: cleanItems, brand }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -1720,11 +1822,20 @@ function SaleModal({
   const hasItems = items.length > 0;
 
   return (
-    <ModalShell title={edit ? "Edit sale" : "Add sale"} onClose={onClose}>
-      {!edit && <AiCompose kind="sale" onDraft={applyDraft} />}
+    <ModalShell
+      title={
+        edit
+          ? "Edit sale"
+          : brand === "CARS"
+            ? "Add car sale"
+            : "Add sale"
+      }
+      onClose={onClose}
+    >
+      {!edit && brand !== "CARS" && <AiCompose kind="sale" onDraft={applyDraft} />}
 
-      {/* Items sold from inventory (create + edit) */}
-      {(
+      {/* Items sold from inventory (create + edit) — caps only; JF Cars has no inventory */}
+      {brand !== "CARS" && (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-gray-700">
@@ -1906,18 +2017,25 @@ function SaleModal({
         </Field>
         {!hasItems && (
           <>
-            <Field label="Product">
+            <Field label={brand === "CARS" ? "Car" : "Product"}>
               <input
                 value={form.productText}
                 onChange={(e) => set("productText", e.target.value)}
-                placeholder="e.g. Benz / Ferrari"
+                placeholder={
+                  brand === "CARS"
+                    ? "e.g. 2015 Mercedes-Benz E350"
+                    : "e.g. Benz / Ferrari"
+                }
                 className={inputCls}
               />
             </Field>
-            <Field label="Variant / colour">
+            <Field label={brand === "CARS" ? "Details / spec" : "Variant / colour"}>
               <input
                 value={form.variantText}
                 onChange={(e) => set("variantText", e.target.value)}
+                placeholder={
+                  brand === "CARS" ? "e.g. Foreign used, duty paid" : undefined
+                }
                 className={inputCls}
               />
             </Field>
@@ -2036,10 +2154,12 @@ function SaleModal({
 }
 
 function ExpenseModal({
+  brand,
   edit,
   onClose,
   onSaved,
 }: {
+  brand: BrandKey;
   edit?: Expense;
   onClose: () => void;
   onSaved: () => void;
@@ -2078,7 +2198,7 @@ function ExpenseModal({
       const res = await fetch(url, {
         method: edit ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, brand }),
       });
       if (!res.ok) throw new Error("Save failed");
       onSaved();
@@ -2170,5 +2290,170 @@ function ModalActions({
         Save
       </button>
     </div>
+  );
+}
+
+/* --------------------------- interactions (JF Cars log) --------------------------- */
+
+function InteractionsTable({
+  interactions,
+  onEdit,
+  onDelete,
+}: {
+  interactions: Interaction[];
+  onEdit: (i: Interaction) => void;
+  onDelete: (id: string) => void;
+}) {
+  if (interactions.length === 0)
+    return (
+      <EmptyState label="No log entries yet. Record viewings, negotiations, inspections — anything worth remembering about a deal." />
+    );
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+            <Th>Date</Th>
+            <Th>What happened</Th>
+            <Th>Contact</Th>
+            <Th className="text-right">Amount</Th>
+            <Th />
+          </tr>
+        </thead>
+        <tbody>
+          {interactions.map((i) => (
+            <tr key={i.id} className="border-b border-gray-50 hover:bg-gray-50">
+              <Td className="whitespace-nowrap text-gray-600">
+                {fmtDate(i.date)}
+              </Td>
+              <Td className="max-w-[360px]">
+                <div className="font-medium text-gray-900">{i.title}</div>
+                {i.note && (
+                  <div className="text-xs text-gray-500 whitespace-pre-wrap mt-0.5">
+                    {i.note}
+                  </div>
+                )}
+              </Td>
+              <Td className="text-gray-700">{i.contact || "—"}</Td>
+              <Td className="text-right text-gray-700">
+                {i.amount === null ? "—" : naira(i.amount)}
+              </Td>
+              <Td>
+                <RowActions
+                  onEdit={() => onEdit(i)}
+                  onDelete={() => onDelete(i.id)}
+                />
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function InteractionModal({
+  brand,
+  edit,
+  onClose,
+  onSaved,
+}: {
+  brand: BrandKey;
+  edit?: Interaction;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    date: toDateInput(edit?.date),
+    title: edit?.title ?? "",
+    contact: edit?.contact ?? "",
+    amount: edit?.amount ?? "",
+    note: edit?.note ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+
+  const submit = async () => {
+    if (!form.title.trim()) {
+      alert("A short title is required — e.g. 'Viewing with Musa'.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const url = edit
+        ? `/api/admin/finance/interactions/${edit.id}`
+        : "/api/admin/finance/interactions";
+      const res = await fetch(url, {
+        method: edit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, brand }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Save failed");
+      }
+      onSaved();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell
+      title={edit ? "Edit log entry" : "Log an interaction"}
+      onClose={onClose}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Date">
+          <input
+            type="date"
+            value={form.date}
+            onChange={(e) => set("date", e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Contact (optional)">
+          <input
+            value={form.contact}
+            onChange={(e) => set("contact", e.target.value)}
+            placeholder="name / phone"
+            className={inputCls}
+          />
+        </Field>
+        <div className="col-span-2">
+          <Field label="What happened">
+            <input
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+              placeholder="e.g. Viewing — 2015 Benz E350 with Musa"
+              className={inputCls}
+            />
+          </Field>
+        </div>
+        <Field label="Amount discussed (₦, optional)">
+          <input
+            type="number"
+            value={form.amount}
+            onChange={(e) => set("amount", e.target.value)}
+            placeholder="e.g. offer made"
+            className={inputCls}
+          />
+        </Field>
+        <div className="col-span-2">
+          <Field label="Details (optional)">
+            <textarea
+              value={form.note}
+              onChange={(e) => set("note", e.target.value)}
+              rows={3}
+              placeholder="How it went, next steps…"
+              className={`${inputCls} resize-none`}
+            />
+          </Field>
+        </div>
+      </div>
+      <ModalActions saving={saving} onClose={onClose} onSubmit={submit} />
+    </ModalShell>
   );
 }

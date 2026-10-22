@@ -518,9 +518,16 @@ model LoyaltyReward {
 // FINANCE — OFFLINE SALES & EXPENSES LEDGER
 // ============================================
 
+// Sub-brand a ledger entry belongs to: the caps shop (default) or JF Cars.
+enum Brand {
+  CAPS
+  CARS
+}
+
 model Sale {
   id String @id @default(cuid())
 
+  brand         Brand    @default(CAPS)
   date          DateTime
   customerName  String
   customerPhone String? // For new-stock reminder messages
@@ -556,6 +563,7 @@ model Sale {
   @@index([date])
   @@index([customerName])
   @@index([paymentStatus])
+  @@index([brand])
   @@map("sales")
 }
 
@@ -583,6 +591,7 @@ model SaleItem {
 model Expense {
   id String @id @default(cuid())
 
+  brand       Brand           @default(CAPS)
   date        DateTime
   category    ExpenseCategory
   description String?
@@ -594,7 +603,27 @@ model Expense {
 
   @@index([date])
   @@index([category])
+  @@index([brand])
   @@map("expenses")
+}
+
+// Notable interactions log — mainly for JF Cars deals: viewings,
+// negotiations, inspections, sourcing conversations.
+model Interaction {
+  id String @id @default(cuid())
+
+  brand   Brand    @default(CARS)
+  date    DateTime
+  title   String // e.g. "Viewing — 2015 Benz E350 with Musa"
+  contact String? // person / phone involved
+  amount  Decimal? @db.Decimal(12, 2) // optional figure discussed
+  note    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brand, date])
+  @@map("interactions")
 }
 
 enum SalePaymentStatus {
