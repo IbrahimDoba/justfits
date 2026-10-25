@@ -134,6 +134,7 @@ const EXPENSE_CATEGORIES = [
   "RENT",
   "SALARIES",
   "FEES",
+  "INVESTOR_RETURN",
   "OTHER",
 ] as const;
 
@@ -175,6 +176,7 @@ const categoryStyles: Record<string, string> = {
   RENT: "bg-teal-100 text-teal-800",
   SALARIES: "bg-indigo-100 text-indigo-800",
   FEES: "bg-orange-100 text-orange-800",
+  INVESTOR_RETURN: "bg-emerald-100 text-emerald-800",
   OTHER: "bg-gray-100 text-gray-800",
 };
 
@@ -690,7 +692,7 @@ function OverviewTab({ summary }: { summary: Summary | null }) {
                       categoryStyles[c.category] || categoryStyles.OTHER
                     }`}
                   >
-                    {c.category}
+                    {c.category.replace(/_/g, " ")}
                   </span>
                   <span className="text-gray-700 font-medium">{naira(c.amount)}</span>
                 </div>
@@ -1258,7 +1260,7 @@ function ExpensesTable({
                     categoryStyles[e.category] || categoryStyles.OTHER
                   }`}
                 >
-                  {e.category}
+                  {e.category.replace(/_/g, " ")}
                 </span>
               </Td>
               <Td className="text-gray-900">{e.description || "—"}</Td>
@@ -2229,7 +2231,7 @@ function ExpenseModal({
           >
             {EXPENSE_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {c.replace(/_/g, " ")}
               </option>
             ))}
           </select>
