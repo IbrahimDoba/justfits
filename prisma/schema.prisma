@@ -630,6 +630,7 @@ enum SalePaymentStatus {
   PAID
   PARTIAL
   PENDING
+  RETURNED // order came back: no revenue/profit, but costs (e.g. delivery) may be recorded
 }
 
 enum ExpenseCategory {

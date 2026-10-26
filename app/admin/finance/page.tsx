@@ -40,7 +40,7 @@ import { CARRIER_OPTIONS, getCarrier, CARRIERS } from "@/lib/shipping/carriers";
 
 /* ------------------------------ types ------------------------------ */
 
-type PaymentStatus = "PAID" | "PARTIAL" | "PENDING";
+type PaymentStatus = "PAID" | "PARTIAL" | "PENDING" | "RETURNED";
 
 // Sub-brand the ledger is scoped to: the caps shop or JF Cars.
 type BrandKey = "CAPS" | "CARS";
@@ -138,7 +138,7 @@ const EXPENSE_CATEGORIES = [
   "OTHER",
 ] as const;
 
-const PAYMENT_STATUSES: PaymentStatus[] = ["PAID", "PARTIAL", "PENDING"];
+const PAYMENT_STATUSES: PaymentStatus[] = ["PAID", "PARTIAL", "PENDING", "RETURNED"];
 
 /* ------------------------------ helpers ------------------------------ */
 
@@ -165,6 +165,7 @@ const statusStyles: Record<PaymentStatus, string> = {
   PAID: "bg-green-100 text-green-800",
   PARTIAL: "bg-yellow-100 text-yellow-800",
   PENDING: "bg-red-100 text-red-800",
+  RETURNED: "bg-gray-200 text-gray-700",
 };
 
 const categoryStyles: Record<string, string> = {

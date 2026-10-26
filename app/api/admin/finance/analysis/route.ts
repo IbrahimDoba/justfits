@@ -77,7 +77,10 @@ async function buildMetrics() {
     0
   );
 
-  const unpaid = sales.filter((s) => s.paymentStatus !== "PAID");
+  // RETURNED sales owe nothing — the goods came back, so they never become receivables.
+  const unpaid = sales.filter(
+    (s) => s.paymentStatus !== "PAID" && s.paymentStatus !== "RETURNED"
+  );
   const receivables = unpaid.reduce((a, s) => {
     const expected = N(s.unitPrice) * s.quantity + N(s.deliveryFee);
     return a + Math.max(0, expected - N(s.totalCollected));

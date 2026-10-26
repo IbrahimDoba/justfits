@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/auth/admin-guard";
 import { getCarrier } from "@/lib/shipping/carriers";
 import type { Prisma } from "@prisma/client";
 
-const PAYMENT_STATUSES = ["PAID", "PARTIAL", "PENDING"] as const;
+const PAYMENT_STATUSES = ["PAID", "PARTIAL", "PENDING", "RETURNED"] as const;
 
 class OversellError extends Error {}
 
