@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cachedJson } from "@/lib/shop/cache";
 import { getInventoryListProducts } from "@/lib/shop/catalog-source";
 import { matchScore, tokenize } from "@/lib/shop/search";
 
@@ -86,7 +87,7 @@ export async function GET(request: NextRequest) {
       return rest;
     });
 
-    return NextResponse.json({
+    return cachedJson({
       products: paged,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });

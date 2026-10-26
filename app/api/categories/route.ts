@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cachedJson } from "@/lib/shop/cache";
 import { getInventoryCategories, getInventoryListProducts } from "@/lib/shop/catalog-source";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export async function GET() {
       ...invCats.sort((a, b) => a.name.localeCompare(b.name)),
     ];
 
-    return NextResponse.json({ categories: transformedCategories });
+    return cachedJson({ categories: transformedCategories });
   } catch (error) {
     console.error("Categories API error:", error);
     return NextResponse.json(

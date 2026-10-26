@@ -1,13 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 
 // Configure Cloudinary
-console.log("Initializing Cloudinary with:", {
-  hasCloudinaryUrl: !!process.env.CLOUDINARY_URL,
-  cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  hasApiKey: !!process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-  hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
-});
-
 if (process.env.CLOUDINARY_URL) {
   cloudinary.config(true);
 } else {
@@ -18,8 +11,6 @@ if (process.env.CLOUDINARY_URL) {
     secure: true,
   });
 }
-
-console.log("Cloudinary config after init:", cloudinary.config());
 
 export interface UploadResult {
   public_id: string;

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { cachedJson } from "@/lib/shop/cache";
 import { prisma } from "@/lib/db/prisma";
+import { hostedImage } from "@/lib/shop/catalog-source";
 
 // GET /api/catalogue - PUBLIC read-only catalogue, sourced live from inventory.
 // Only active, in-stock items; exposes safe fields (no cost price).
@@ -63,7 +65,7 @@ export async function GET() {
           sizes: [],
           totalStock: 0,
         };
-      if (!g.imageUrl && i.imageUrl) g.imageUrl = i.imageUrl;
+      if (!g.imageUrl && hostedImage(i.imageUrl)) g.imageUrl = i.imageUrl;
       if (i.sellingPrice != null) g.prices.push(Number(i.sellingPrice));
       if (i.size) g.sizes.push({ size: i.size, quantity: i.quantity });
       g.totalStock += i.quantity;
@@ -81,7 +83,7 @@ export async function GET() {
       inStock: g.totalStock > 0,
     }));
 
-    return NextResponse.json({
+    return cachedJson({
       products,
       whatsapp: toWhatsApp(settings?.storePhone),
       storeName: settings?.storeName || "JUSTFITS",

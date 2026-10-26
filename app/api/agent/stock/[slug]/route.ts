@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cachedJson } from "@/lib/shop/cache";
 import { getAgentProductBySlug } from "@/lib/agent/catalog";
 
 // GET /api/agent/stock/<slug>
@@ -16,13 +17,13 @@ export async function GET(
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
-    return NextResponse.json({
+    return cachedJson({
       slug: product.slug,
       name: product.name,
       inStock: product.inStock,
       totalStock: product.totalStock,
       sizes: product.sizes,
-    });
+    }, 30);
   } catch (error) {
     console.error("Agent stock check error:", error);
     return NextResponse.json({ error: "Stock check failed" }, { status: 500 });

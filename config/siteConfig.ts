@@ -6,7 +6,7 @@ export const siteConfig = {
   description:
     "Premium car-themed caps featuring Mercedes-Benz, BMW, Porsche designs. Limited drops, high quality, global appeal.",
   url: process.env.NEXT_PUBLIC_BASE_URL || "https://justfitsng.com",
-  ogImage: "/og-image.png",
+  ogImage: "/og-image.jpg",
   links: {
     instagram: "https://instagram.com/justfitsng",
     twitter: "https://twitter.com/justfitsng",

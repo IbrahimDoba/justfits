@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { hostedImage } from "@/lib/shop/catalog-source";
 import { inventorySlug } from "@/lib/inventory/slug";
 import { matchScore, tokenize } from "@/lib/shop/search";
 
@@ -67,7 +68,7 @@ async function getGroups(): Promise<Group[]> {
         sizes: [],
         totalStock: 0,
       } satisfies Group);
-    if (!g.imageUrl && i.imageUrl) g.imageUrl = i.imageUrl;
+    if (!g.imageUrl && hostedImage(i.imageUrl)) g.imageUrl = i.imageUrl;
     if (i.sellingPrice != null) g.prices.push(Number(i.sellingPrice));
     if (i.size) {
       g.sizes.push({

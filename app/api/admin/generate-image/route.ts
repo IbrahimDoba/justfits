@@ -5,6 +5,18 @@ import {
   generateGeminiImage,
   generateGeminiProductShot,
 } from "@/lib/services/gemini";
+import { uploadImage } from "@/lib/services/cloudinary";
+
+// Image models return raw base64 data URIs. Never hand those to the client:
+// once saved to a product they bloat every catalogue response (a single 1MB
+// image made /api/products 2MB). Host them on Cloudinary and return the URL.
+async function toHostedUrl(imageUrl: string): Promise<string> {
+  if (!imageUrl.startsWith("data:")) return imageUrl;
+  const { secure_url } = await uploadImage(imageUrl, {
+    folder: "justfits/inventory/ai",
+  });
+  return secure_url;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +53,7 @@ export async function POST(request: NextRequest) {
         additionalDetails,
         model: model || "gemini-2.5-flash-image",
       });
-      return NextResponse.json({ imageUrl });
+      return NextResponse.json({ imageUrl: await toHostedUrl(imageUrl) });
     }
 
     if (!referenceImagePath) {
@@ -85,7 +97,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ imageUrl });
+    return NextResponse.json({ imageUrl: await toHostedUrl(imageUrl) });
   } catch (error) {
     console.error("Generation error:", error);
     return NextResponse.json(

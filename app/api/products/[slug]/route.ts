@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cachedJson } from "@/lib/shop/cache";
 import { prisma } from "@/lib/db/prisma";
 import { getInventoryProductBySlug } from "@/lib/shop/catalog-source";
 
@@ -13,7 +14,7 @@ export async function GET(
     // Inventory is the source of truth — resolve it first.
     const fromInventory = await getInventoryProductBySlug(slug);
     if (fromInventory) {
-      return NextResponse.json(fromInventory);
+      return cachedJson(fromInventory);
     }
 
     const product = await prisma.product.findUnique({
@@ -139,7 +140,7 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({
+    return cachedJson({
       product: transformedProduct,
       relatedProducts: transformedRelated,
     });

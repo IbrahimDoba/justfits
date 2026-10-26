@@ -9,10 +9,10 @@ import { staggerContainer, staggerItem } from "@/animations/variants";
 import { getImageBlurDataURL } from "@/lib/utils/imageBlur";
 
 const heroImages = [
-  "/justfits/wwbenz2.png",
-  "/justfits/bbmw1.png",
-  "/justfits/blackbenzcap1.png",
-  "/justfits/cbenz1.png",
+  "/justfits/wwbenz2.webp",
+  "/justfits/bbmw1.webp",
+  "/justfits/blackbenzcap1.webp",
+  "/justfits/cbenz1.webp",
 ];
 
 export function Hero() {
@@ -196,7 +196,7 @@ export function Hero() {
                             fill
                             className="object-contain drop-shadow-2xl pointer-events-none"
                             priority={index === 0}
-                            quality={90}
+                            quality={75}
                             sizes="(max-width: 1024px) 100vw, 50vw"
                             placeholder="blur"
                             blurDataURL={getImageBlurDataURL(image)}

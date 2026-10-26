@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cachedJson } from "@/lib/shop/cache";
 import { searchAgentProducts } from "@/lib/agent/catalog";
 import { inventorySlug } from "@/lib/inventory/slug";
 
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
     const slug = inventorySlug(q);
     const shopUrl = slug ? `${SITE}/shop/${slug}` : `${SITE}/shop`;
 
-    return NextResponse.json({ count: products.length, shopUrl, products });
+    return cachedJson({ count: products.length, shopUrl, products }, 30);
   } catch (error) {
     console.error("Agent products search error:", error);
     return NextResponse.json({ error: "Search failed" }, { status: 500 });

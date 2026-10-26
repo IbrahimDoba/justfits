@@ -41,11 +41,16 @@ interface Group {
   totalStock: number;
 }
 
-async function getInventoryGroups(): Promise<Group[]> {
+// Public responses only ever carry hosted image URLs. A raw base64 data URI
+// (e.g. an AI image saved before upload) would bloat every shop request.
+export const hostedImage = (url: string | null | undefined) =>
+  url && !url.startsWith("data:") ? url : null;
+
+async function getInventoryGroups({ includeSoldOut = false } = {}): Promise<Group[]> {
   // Only the cover (imageUrl) is needed for lists/catalogue — never fetch the
   // full images[] gallery here (keeps data transfer minimal).
   const items = await prisma.inventoryItem.findMany({
-    where: { isActive: true, quantity: { gt: 0 } },
+    where: { isActive: true, ...(includeSoldOut ? {} : { quantity: { gt: 0 } }) },
     orderBy: [{ category: "asc" }, { name: "asc" }],
     select: {
       id: true,
@@ -73,7 +78,7 @@ async function getInventoryGroups(): Promise<Group[]> {
         variants: [],
         totalStock: 0,
       };
-    if (!g.imageUrl && i.imageUrl) g.imageUrl = i.imageUrl;
+    if (!g.imageUrl && hostedImage(i.imageUrl)) g.imageUrl = i.imageUrl;
     const price = i.sellingPrice != null ? Number(i.sellingPrice) : 0;
     if (i.sellingPrice != null) g.prices.push(price);
     g.variants.push({ id: i.id, size: i.size, price, stock: i.quantity });
@@ -124,7 +129,8 @@ export async function getInventoryCategories() {
 }
 
 export async function getInventoryProductBySlug(slug: string) {
-  const groups = await getInventoryGroups();
+  // Include sold-out products so shared links show "sold out" instead of 404.
+  const groups = await getInventoryGroups({ includeSoldOut: true });
   const g = groups.find((x) => inventorySlug(x.name) === slug);
   if (!g) return null;
 
@@ -133,8 +139,9 @@ export async function getInventoryProductBySlug(slug: string) {
     where: { name: g.name, images: { isEmpty: false } },
     select: { images: true },
   });
-  const gallery = withImages?.images?.length
-    ? withImages.images
+  const hostedGallery = (withImages?.images ?? []).filter((u) => hostedImage(u));
+  const gallery = hostedGallery.length
+    ? hostedGallery
     : g.imageUrl
       ? [g.imageUrl]
       : [];
@@ -199,7 +206,9 @@ export async function getInventoryProductBySlug(slug: string) {
   };
 
   const relatedProducts = groups
-    .filter((x) => x.category === g.category && x.name !== g.name)
+    .filter(
+      (x) => x.category === g.category && x.name !== g.name && x.totalStock > 0
+    )
     .slice(0, 4)
     .map((x) => ({
       id: `inv_${inventorySlug(x.name)}`,
