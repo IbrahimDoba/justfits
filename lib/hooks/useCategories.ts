@@ -11,7 +11,7 @@ interface CategoriesResponse {
   categories: Category[];
 }
 
-export function useCategories() {
+export function useCategories(initialData?: Category[]) {
   return useQuery({
     queryKey: ["categories"],
     queryFn: async () => {
@@ -22,6 +22,7 @@ export function useCategories() {
       const data: CategoriesResponse = await res.json();
       return data.categories;
     },
+    initialData,
     staleTime: 30 * 60 * 1000, // 30 minutes - categories rarely change
     gcTime: 60 * 60 * 1000, // 1 hour
   });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cachedJson } from "@/lib/shop/cache";
-import { getInventoryCategories, getInventoryListProducts } from "@/lib/shop/catalog-source";
+import { getShopCategories } from "@/lib/shop/list";
 
 export const dynamic = "force-dynamic";
 
@@ -8,17 +8,7 @@ export const dynamic = "force-dynamic";
 // Driven by inventory (single source of truth): All + Caps + Shirts.
 export async function GET() {
   try {
-    const [invCats, invProducts] = await Promise.all([
-      getInventoryCategories(),
-      getInventoryListProducts(),
-    ]);
-
-    const transformedCategories = [
-      { id: "all", name: "All", slug: "all", productCount: invProducts.length },
-      ...invCats.sort((a, b) => a.name.localeCompare(b.name)),
-    ];
-
-    return cachedJson({ categories: transformedCategories });
+    return cachedJson({ categories: await getShopCategories() });
   } catch (error) {
     console.error("Categories API error:", error);
     return NextResponse.json(

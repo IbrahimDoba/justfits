@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 interface Product {
   id: string;
@@ -23,6 +23,8 @@ interface UseProductsOptions {
   limit?: number;
   search?: string;
   enabled?: boolean;
+  // Server-rendered list for these exact options (skips the first fetch).
+  initialData?: Product[];
 }
 
 export function useProducts(options: UseProductsOptions = {}) {
@@ -32,6 +34,7 @@ export function useProducts(options: UseProductsOptions = {}) {
     limit = 50,
     search = "",
     enabled = true,
+    initialData,
   } = options;
 
   return useQuery({
@@ -51,6 +54,9 @@ export function useProducts(options: UseProductsOptions = {}) {
       return data.products;
     },
     enabled,
+    initialData,
+    // Keep the current grid on screen while a new filter/sort loads.
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });

@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { ProductImagePlaceholder } from "./ProductImagePlaceholder";
-import { getImageBlurDataURL, getProductImageSizes } from "@/lib/utils/imageBlur";
+import { getImageBlurDataURL } from "@/lib/utils/imageBlur";
 
 interface ProductCardProps {
   title: string;
@@ -16,7 +16,16 @@ interface ProductCardProps {
   variant?: 1 | 2 | 3;
   inStock?: boolean;
   layout?: "carousel" | "grid";
+  // Above-the-fold card: fetch its image eagerly (first row of the grid).
+  priority?: boolean;
 }
+
+// Rendered image widths: carousel cards are fixed-width, grid cards follow
+// the shop grid (2 cols on phones, 3 at lg, 4 at xl).
+const IMAGE_SIZES = {
+  carousel: "(max-width: 639px) 240px, (max-width: 767px) 280px, 320px",
+  grid: "(max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw",
+};
 
 export function ProductCard({
   title,
@@ -27,6 +36,7 @@ export function ProductCard({
   variant = 1,
   inStock = true,
   layout = "carousel",
+  priority = false,
 }: ProductCardProps) {
   const cardContent = (
     <motion.div
@@ -47,9 +57,11 @@ export function ProductCard({
             src={image}
             alt={title}
             fill
-            sizes={getProductImageSizes()}
+            sizes={IMAGE_SIZES[layout]}
             className="object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
+            preload={priority}
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             placeholder="blur"
             blurDataURL={getImageBlurDataURL(image)}
           />
