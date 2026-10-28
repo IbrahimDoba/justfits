@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { ArrowUpRight, Loader2 } from "lucide-react";
 import { useFeaturedProducts } from "@/lib/hooks/useFeaturedProducts";
-import { getImageBlurDataURL, shouldPrioritizeImage } from "@/lib/utils/imageBlur";
+import { getImageBlurDataURL } from "@/lib/utils/imageBlur";
 
 interface Product {
   id: string;
@@ -49,12 +49,12 @@ export function ProductShowcase() {
         <ScrollReveal direction="up">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6">
             <div className="flex-1">
-              <p className="text-xs sm:text-sm font-body uppercase tracking-[0.2em] sm:tracking-[0.3em] text-black/40 mb-2 md:mb-4">
-                The Collection
-              </p>
-              <h2 className="font-script text-3xl sm:text-4xl md:text-5xl lg:text-6xl italic text-black">
-                Caps That Define Your Drive
+              <h2 className="font-display text-5xl md:text-6xl text-black">
+                The collection
               </h2>
+              <p className="mt-3 text-base md:text-lg font-body text-black/50 max-w-md leading-relaxed">
+                Current drops, straight from the shop floor.
+              </p>
             </div>
             <Link
               href="/shop"
@@ -132,20 +132,6 @@ export function ProductShowcase() {
         </div>
       </div>
 
-      {/* Editorial Quote */}
-      <div className="container px-4 sm:px-6 mt-8 sm:mt-12 md:mt-16 lg:mt-24">
-        <ScrollReveal direction="up">
-          <div className="mx-auto text-center max-w-3xl">
-            <p className="font-script text-lg sm:text-xl md:text-2xl lg:text-3xl italic text-black/50 leading-relaxed px-2 sm:px-4">
-              &ldquo;Every cap tells a story of craftsmanship, precision, and
-              the relentless pursuit of excellence.&rdquo;
-            </p>
-            <p className="mt-3 sm:mt-4 md:mt-6 text-xs sm:text-sm font-body uppercase tracking-wider text-black/30">
-              — JustFits Design Philosophy
-            </p>
-          </div>
-        </ScrollReveal>
-      </div>
     </section>
   );
 }
@@ -204,7 +190,7 @@ function ProductCard({ product, variant }: ProductCardProps) {
             <h3 className="font-body text-sm sm:text-base md:text-lg font-medium text-white mb-0.5 sm:mb-1 line-clamp-1">
               {product.name}
             </h3>
-            <p className="text-xs sm:text-sm text-white/70">
+            <p className="font-mono text-xs sm:text-sm tracking-[0.04em] text-white/80">
               {formatPrice(product.price)}
             </p>
           </div>

@@ -1,81 +1,83 @@
 "use client";
 
-import { motion } from "framer-motion";
+import Image from "next/image";
+import { motion, useReducedMotion } from "framer-motion";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { Gem, Target, Car } from "lucide-react";
+import { getImageBlurDataURL } from "@/lib/utils/imageBlur";
 
-const features = [
+const points = [
   {
-    icon: Gem,
-    title: "Premium Materials",
-    description:
-      "Crafted with high-quality fabrics and meticulous attention to detail. Built to last, designed to impress.",
+    title: "Structured crowns",
+    body: "Firm panels and clean stitching that keep their shape, wear after wear.",
   },
   {
-    icon: Target,
-    title: "Perfect Fit",
-    description:
-      "Engineered for comfort and style. Every cap is designed to sit perfectly, all day long.",
+    title: "Fitted, not floppy",
+    body: "Adjustable closures that sit right on every head, all day.",
   },
   {
-    icon: Car,
-    title: "Car-Inspired Design",
-    description:
-      "Authentic automotive heritage meets contemporary streetwear. For those who appreciate the finer things.",
+    title: "Badge-first design",
+    body: "The embroidery is the centerpiece. Everything else stays out of its way.",
   },
 ];
 
 export function WhyJustFits() {
+  const reduce = useReducedMotion();
+
   return (
-    <section className="relative py-24 md:py-32 bg-gray-50">
+    <section className="relative py-24 md:py-32 bg-gray-50 overflow-hidden">
       <div className="container px-6">
-        {/* Section Header */}
-        <ScrollReveal direction="up">
-          <div className="text-center mb-16 md:mb-20">
-            <p className="text-sm font-body uppercase tracking-[0.3em] text-black/40 mb-4">
-              Why Choose Us
-            </p>
-            <h2 className="font-script text-4xl md:text-5xl italic text-black">
-              The JustFits Difference
-            </h2>
-          </div>
-        </ScrollReveal>
-
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8 lg:gap-12">
-          {features.map((feature, index) => (
-            <ScrollReveal key={index} direction="up" delay={index * 0.1}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+          {/* Photography */}
+          <ScrollReveal direction="up">
+            <div className="relative aspect-[4/5] max-h-[640px] w-full rounded-2xl overflow-hidden">
               <motion.div
-                whileHover={{ y: -4 }}
-                transition={{ duration: 0.3 }}
-                className="text-center group"
+                initial={reduce ? false : { scale: 1.08 }}
+                whileInView={{ scale: 1 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-0"
               >
-                {/* Icon */}
-                <div className="inline-flex items-center gap-4 justify-center w-16 h-16 mb-6 border border-black/10 rounded-full group-hover:border-black/20 transition-colors duration-300">
-                  <feature.icon
-                    size={28}
-                    strokeWidth={1.5}
-                    className="text-black/50 group-hover:text-black transition-colors duration-300"
-                  />
-                </div>
-
-                {/* Title */}
-                <h3 className="font-body text-lg font-medium text-black mb-3">
-                  {feature.title}
-                </h3>
-
-                {/* Description */}
-                <p className="text-sm font-body text-black/50 leading-relaxed">
-                  {feature.description}
-                </p>
+                <Image
+                  src="/justfits/bbmw2.webp"
+                  alt="The M Motorsport cap, worn"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
+                  className="object-cover object-top"
+                  loading="lazy"
+                  placeholder="blur"
+                  blurDataURL={getImageBlurDataURL("/justfits/bbmw2.webp")}
+                />
               </motion.div>
-            </ScrollReveal>
-          ))}
-        </div>
+            </div>
+          </ScrollReveal>
 
-        {/* Decorative Line */}
-        <div className="mt-20 flex justify-center w-full">
-          <div className="w-24 h-px bg-gradient-to-r from-transparent via-black/20 to-transparent" />
+          {/* Copy */}
+          <div>
+            <ScrollReveal direction="up">
+              <h2 className="font-display text-5xl md:text-6xl text-black leading-[0.95]">
+                Built like the cars
+              </h2>
+              <p className="mt-4 text-base md:text-lg font-body text-black/50 max-w-md leading-relaxed">
+                Premium panels, clean embroidery, fits that last. The details do
+                the talking.
+              </p>
+            </ScrollReveal>
+
+            <div className="mt-10 divide-y divide-black/10 border-t border-black/10">
+              {points.map((point, i) => (
+                <ScrollReveal key={point.title} direction="up" delay={i * 0.08}>
+                  <div className="py-6">
+                    <h3 className="font-body text-lg font-medium text-black">
+                      {point.title}
+                    </h3>
+                    <p className="mt-1.5 text-sm font-body text-black/50 leading-relaxed max-w-md">
+                      {point.body}
+                    </p>
+                  </div>
+                </ScrollReveal>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>
