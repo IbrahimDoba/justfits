@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { INTERNAL_KEY } from "@/lib/analytics/client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
+  BarChart3,
   Package,
   Boxes,
   ShoppingCart,
@@ -24,6 +26,7 @@ import { signOut, useSession } from "next-auth/react";
 
 const sidebarLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/products", label: "Products", icon: Package },
   { href: "/admin/inventory", label: "Inventory", icon: Boxes },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
@@ -42,6 +45,16 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+
+  // Devices used for the admin are excluded from site analytics, so staff
+  // browsing the shop doesn't inflate visitor numbers.
+  useEffect(() => {
+    try {
+      localStorage.setItem(INTERNAL_KEY, "1");
+    } catch {
+      /* storage blocked */
+    }
+  }, []);
   const { data: session } = useSession();
 
   const isActiveLink = (href: string) => {

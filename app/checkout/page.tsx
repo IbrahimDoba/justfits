@@ -13,6 +13,7 @@ import { ProductImagePlaceholder } from "@/components/ui/ProductImagePlaceholder
 import { useCart } from "@/context/CartContext";
 import { useToast } from "@/components/ui/Toast";
 import { formatPrice } from "@/lib/utils/format";
+import { flush, track } from "@/lib/analytics/client";
 import { getGuoCenters, GUO_CARRIER_NAME } from "@/lib/shipping/guo-locations";
 import {
   ArrowLeft,
@@ -167,6 +168,15 @@ export default function CheckoutPage() {
       .catch(() => {})
       .finally(() => setIsFetchingRate(false));
   }, [formData.state]);
+
+  // Analytics: a checkout session started (once per visit to this page).
+  const hasItems = items.length > 0;
+  useEffect(() => {
+    if (hasItems) {
+      track("checkout_start", { value: totalPrice, label: `${totalItems} items` });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasItems]);
 
   // Resolve the store's WhatsApp number once on mount.
   useEffect(() => {
@@ -567,6 +577,13 @@ export default function CheckoutPage() {
     const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
       buildWhatsAppMessage()
     )}`;
+    // Analytics: the conversion. Flush now since WhatsApp takes focus next.
+    track("whatsapp_order", {
+      value: orderTotal,
+      label: items.map((i) => i.product.name).join(", ").slice(0, 120),
+    });
+    flush();
+
     // Open WhatsApp in a new tab so the customer keeps their cart if they return.
     window.open(url, "_blank", "noopener,noreferrer");
     showToast("Opening WhatsApp to confirm your order…", "success");

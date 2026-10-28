@@ -10,6 +10,7 @@ import { ProductImagePlaceholder } from "@/components/ui/ProductImagePlaceholder
 import { ProductCard } from "@/components/ui/ProductCard";
 import { StarRating } from "@/components/ui/StarRating";
 import { ReviewModal } from "@/components/ui/ReviewModal";
+import { track } from "@/lib/analytics/client";
 import { ReviewList } from "@/components/ui/ReviewList";
 import { ProductImageCarousel } from "@/components/ui/ProductImageCarousel";
 import {
@@ -114,6 +115,15 @@ export function ProductDetailClient({
   } = useWishlist();
   const { showToast } = useToast();
 
+  // Analytics: one product_view per product page visit.
+  useEffect(() => {
+    track("product_view", {
+      productSlug: product.slug,
+      label: product.name,
+      value: product.price,
+    });
+  }, [product.slug, product.name, product.price]);
+
   const refreshReviews = async () => {
     // Query will auto-refresh via mutation invalidation
   };
@@ -176,6 +186,11 @@ export function ProductDetailClient({
 
     setTimeout(() => {
       addItem(cartProduct, quantity, sizeToUse, variant.stockQuantity);
+      track("add_to_cart", {
+        productSlug: product.slug,
+        label: sizeToUse ? `${product.name} (${sizeToUse})` : product.name,
+        value: variant.price * quantity,
+      });
       setIsAdding(false);
       setJustAdded(true);
       showToast(`${product.name} added to cart`, "success");

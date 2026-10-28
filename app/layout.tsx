@@ -50,6 +50,8 @@ export const metadata: Metadata = defaultMetadata;
 
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Analytics } from "@vercel/analytics/next";
+import { Suspense } from "react";
+import { Tracker } from "@/components/analytics/Tracker";
 import Script from "next/script";
 
 export default function RootLayout({
@@ -81,6 +83,10 @@ export default function RootLayout({
                     strategy="afterInteractive"
                   />
                   <Analytics />
+                  {/* First-party analytics -> /admin/analytics */}
+                  <Suspense fallback={null}>
+                    <Tracker />
+                  </Suspense>
                   <Script
                     src="https://cdn.databuddy.cc/databuddy.js"
                     data-client-id="700dd4bf-06a9-4edc-bbc5-59b9ad17bd10"

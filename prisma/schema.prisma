@@ -802,3 +802,41 @@ enum InvestmentPayoutType {
   PRINCIPAL
   RETURN
 }
+
+// ============================================
+// ANALYTICS — first-party, anonymous site events
+// (random visitor/session ids; no cookies, no IPs stored)
+// ============================================
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  // page_view | click | product_view | add_to_cart | checkout_start | whatsapp_order
+  type      String
+  path      String
+  visitorId String
+  sessionId String
+
+  referrer    String? // external referring domain (first page of a session)
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+
+  label       String? // click text / product name
+  href        String? // click target
+  productSlug String?
+  value       Decimal? @db.Decimal(12, 2) // product price / cart or order value
+
+  country String?
+  city    String?
+  device  String? // mobile | tablet | desktop
+  browser String?
+  os      String?
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+  @@index([sessionId])
+  @@index([productSlug])
+  @@map("analytics_events")
+}
