@@ -404,3 +404,42 @@ select {
   align-items: center;
   justify-content: center;
 }
+
+/* Hero entrance — pure CSS so it starts on first paint instead of waiting
+   for JavaScript to hydrate (the old JS fade kept the LCP image hidden for
+   ~3s on slow phones). Transform/opacity only. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hero-slide {
+  from {
+    transform: translateX(40px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.hero-rise {
+  animation: hero-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Slide only — never fade — so the LCP image is visible as soon as it loads. */
+.hero-slide {
+  animation: hero-slide 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-rise,
+  .hero-slide {
+    animation: none;
+  }
+}

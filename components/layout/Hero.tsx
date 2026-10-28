@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { staggerContainer, staggerItem } from "@/animations/variants";
 import { getImageBlurDataURL } from "@/lib/utils/imageBlur";
 
 const heroImages = [
@@ -52,39 +51,33 @@ export function Hero() {
       <div className="container relative z-10 px-6 min-h-screen">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-screen py-24 md:py-32">
           {/* Left Side - Text Content */}
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="w-full max-w-xl"
-          >
+          <div className="w-full max-w-xl">
             {/* Overline */}
-            <motion.p
-              variants={staggerItem}
-              className="text-sm font-body uppercase tracking-[0.3em] text-black/50 mb-6"
+            <p
+              className="hero-rise text-sm font-body uppercase tracking-[0.3em] text-black/50 mb-6"
             >
               Premium Car-Inspired Caps
-            </motion.p>
+            </p>
 
             {/* Main Headline - Script Style */}
-            <motion.h1
-              variants={staggerItem}
-              className="font-script text-5xl md:text-6xl lg:text-7xl italic text-black mb-6 leading-[1.1]"
+            <h1
+              className="hero-rise font-script text-5xl md:text-6xl lg:text-7xl italic text-black mb-6 leading-[1.1]"
+              style={{ animationDelay: "80ms" }}
             >
               Crown Your Drive.
-            </motion.h1>
+            </h1>
 
             {/* Subtext */}
-            <motion.p
-              variants={staggerItem}
-              className="text-lg md:text-xl font-body text-black/60 mb-10 max-w-md leading-relaxed"
+            <p
+              className="hero-rise text-lg md:text-xl font-body text-black/60 mb-10 max-w-md leading-relaxed"
+              style={{ animationDelay: "160ms" }}
             >
               Where automotive excellence meets streetwear culture. Premium caps
               for those who drive with confidence.
-            </motion.p>
+            </p>
 
             {/* CTA Button */}
-            <motion.div variants={staggerItem}>
+            <div className="hero-rise" style={{ animationDelay: "240ms" }}>
               <Link href="/shop" className="inline-block">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -98,12 +91,12 @@ export function Hero() {
                   />
                 </motion.button>
               </Link>
-            </motion.div>
+            </div>
 
             {/* Brand Badges */}
-            <motion.div
-              variants={staggerItem}
-              className="flex items-center gap-8 mt-10 pt-8 border-t border-black/10"
+            <div
+              className="hero-rise flex items-center gap-8 mt-10 pt-8 border-t border-black/10"
+              style={{ animationDelay: "320ms" }}
             >
               <div className="text-center">
                 <p className="font-display text-2xl md:text-3xl text-black">BMW</p>
@@ -125,15 +118,12 @@ export function Hero() {
                   Coming Soon
                 </p>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
 
-          {/* Right Side - 3D Coverflow Carousel */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="relative w-full h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center perspective-[2000px]"
+          {/* Right Side - 3D Coverflow Carousel (CSS slide-in, never hidden) */}
+          <div
+            className="hero-slide relative w-full h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center perspective-[2000px]"
             style={{ perspective: "2000px" }}
           >
             {/* Background Circle/Shape */}
@@ -195,9 +185,13 @@ export function Hero() {
                             alt={`JustFits premium cap ${index + 1}`}
                             fill
                             className="object-contain drop-shadow-2xl pointer-events-none"
-                            priority={index === 0}
+                            // Centre image is the LCP: fetch it first, never lazily.
+                            preload={index === 0}
+                            loading={index === 0 ? "eager" : undefined}
+                            fetchPriority={index === 0 ? "high" : "low"}
                             quality={75}
-                            sizes="(max-width: 1024px) 100vw, 50vw"
+                            // Rendered ~260-320px wide on phones, ~480px on desktop.
+                            sizes="(max-width: 768px) 320px, (max-width: 1024px) 400px, 480px"
                             placeholder="blur"
                             blurDataURL={getImageBlurDataURL(image)}
                           />
@@ -243,7 +237,7 @@ export function Hero() {
                 />
               ))}
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
 
