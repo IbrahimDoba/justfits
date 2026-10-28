@@ -14,11 +14,14 @@ import { CartDrawer } from "@/components/layout/CartDrawer";
 import "./globals.css";
 
 // Font Configurations for JUSTFITS Premium Brand
+// Performance: Inter, JetBrains Mono and Playfair are variable fonts, so we
+// load one variable file each instead of a separate file per weight. Fonts
+// were 247KB on the homepage and their preloads competed with the hero (LCP)
+// image on slow phones.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
-  weight: ["300", "400", "500", "600", "700", "900"],
 });
 
 const bebasNeue = Bebas_Neue({
@@ -28,20 +31,22 @@ const bebasNeue = Bebas_Neue({
   weight: ["400"],
 });
 
+// Only used for prices below the fold: don't preload it ahead of the hero.
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700"],
+  preload: false,
 });
 
 // Elegant script font for premium headers
+// Every .font-script usage on the site is italic (logo/footer), so only the
+// italic variable face is loaded (was 4 weights x 2 styles).
 const playfairDisplay = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
   display: "swap",
-  weight: ["400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  style: ["italic"],
 });
 
 import { defaultMetadata } from "@/config/siteConfig";
@@ -78,9 +83,11 @@ export default function RootLayout({
                     {`window.dz = window.dz || function(...a){(window.dz.q=window.dz.q||[]).push(a)}
                       dz('init', { publicKey: 'pk_live_e3b6c9dcd34dec05ac4eafd4' })`}
                   </Script>
+                  {/* Third parties load when the browser is idle so they don't
+                      compete with the hero image on slow connections. */}
                   <Script
                     src="https://staging.dailzero.com/embed/v1.js"
-                    strategy="afterInteractive"
+                    strategy="lazyOnload"
                   />
                   <Analytics />
                   {/* First-party analytics -> /admin/analytics */}
@@ -91,7 +98,7 @@ export default function RootLayout({
                     src="https://cdn.databuddy.cc/databuddy.js"
                     data-client-id="700dd4bf-06a9-4edc-bbc5-59b9ad17bd10"
                     crossOrigin="anonymous"
-                    strategy="afterInteractive"
+                    strategy="lazyOnload"
                   />
                 </CartProvider>
               </WishlistProvider>
