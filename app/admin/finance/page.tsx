@@ -35,6 +35,7 @@ import {
   ImageIcon,
   Car,
   ShoppingBag,
+  HandCoins,
 } from "lucide-react";
 import { CARRIER_OPTIONS, getCarrier, CARRIERS } from "@/lib/shipping/carriers";
 
@@ -52,6 +53,17 @@ interface Interaction {
   contact: string | null;
   amount: number | null;
   note: string | null;
+}
+
+type CapitalKind = "CONTRIBUTION" | "REPAYMENT";
+
+interface CapitalEntry {
+  id: string;
+  date: string;
+  investor: string;
+  kind: CapitalKind;
+  amount: number;
+  notes: string | null;
 }
 
 interface Sale {
@@ -115,6 +127,9 @@ interface Summary {
     unitsSold: number;
     salesCount: number;
     expensesCount: number;
+    capitalIn: number;
+    capitalOut: number;
+    cashPosition: number;
   };
   expensesByCategory: Array<{ category: string; amount: number }>;
   monthly: Array<{
@@ -181,11 +196,18 @@ const categoryStyles: Record<string, string> = {
   OTHER: "bg-gray-100 text-gray-800",
 };
 
-type Tab = "overview" | "sales" | "expenses" | "shipments" | "analysis" | "log";
+type Tab =
+  | "overview"
+  | "sales"
+  | "expenses"
+  | "shipments"
+  | "analysis"
+  | "log"
+  | "capital";
 
 const TABS_BY_BRAND: Record<BrandKey, Tab[]> = {
-  CAPS: ["overview", "sales", "expenses", "shipments", "analysis"],
-  CARS: ["overview", "sales", "expenses", "log"],
+  CAPS: ["overview", "sales", "expenses", "capital", "shipments", "analysis"],
+  CARS: ["overview", "sales", "expenses", "capital", "log"],
 };
 
 /* ------------------------------ page ------------------------------ */
@@ -213,6 +235,11 @@ export default function FinancePage() {
     open: boolean;
     edit?: Interaction;
   }>({ open: false });
+  const [capital, setCapital] = useState<CapitalEntry[]>([]);
+  const [capitalModal, setCapitalModal] = useState<{
+    open: boolean;
+    edit?: CapitalEntry;
+  }>({ open: false });
 
   const switchBrand = (b: BrandKey) => {
     setBrand(b);
@@ -223,7 +250,7 @@ export default function FinancePage() {
     setLoading(true);
     setLoadError(null);
     try {
-      const [s, sl, ex, inter] = await Promise.all([
+      const [s, sl, ex, inter, cap] = await Promise.all([
         fetch(`/api/admin/finance/summary?brand=${brand}`).then((r) => r.json()),
         fetch(`/api/admin/finance/sales?brand=${brand}`).then((r) => r.json()),
         fetch(`/api/admin/finance/expenses?brand=${brand}`).then((r) =>
@@ -234,6 +261,9 @@ export default function FinancePage() {
               r.json()
             )
           : Promise.resolve({ interactions: [] }),
+        fetch(`/api/admin/finance/capital?brand=${brand}`).then((r) =>
+          r.json()
+        ),
       ]);
       // Only accept well-formed responses; a non-200 returns { error } instead.
       setSummary(s && s.totals ? s : null);
@@ -242,6 +272,7 @@ export default function FinancePage() {
       setInteractions(
         Array.isArray(inter?.interactions) ? inter.interactions : []
       );
+      setCapital(Array.isArray(cap?.entries) ? cap.entries : []);
       if (!s || !s.totals) {
         setLoadError(s?.error || "Failed to load finance summary.");
       }
@@ -315,6 +346,12 @@ export default function FinancePage() {
   const deleteInteraction = async (id: string) => {
     if (!confirm("Delete this log entry? This cannot be undone.")) return;
     await fetch(`/api/admin/finance/interactions/${id}`, { method: "DELETE" });
+    loadAll();
+  };
+
+  const deleteCapital = async (id: string) => {
+    if (!confirm("Delete this capital entry? This cannot be undone.")) return;
+    await fetch(`/api/admin/finance/capital/${id}`, { method: "DELETE" });
     loadAll();
   };
 
@@ -422,6 +459,40 @@ export default function FinancePage() {
         />
       </div>
 
+      {/* Investor capital strip: financing, deliberately outside the
+          operational cards above so capital never reads as profit. */}
+      {!loading && t && t.capitalIn > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-x-8 gap-y-2 px-5 py-4 rounded-xl bg-white border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <HandCoins size={16} className="text-gray-400" />
+            <span className="font-medium text-gray-900">Investor capital</span>
+          </div>
+          <p className="text-sm text-gray-600">
+            Raised <span className="font-semibold text-gray-900">{naira(t.capitalIn)}</span>
+          </p>
+          {t.capitalOut > 0 && (
+            <p className="text-sm text-gray-600">
+              Principal repaid{" "}
+              <span className="font-semibold text-gray-900">{naira(t.capitalOut)}</span>
+            </p>
+          )}
+          <p className="text-sm text-gray-600">
+            Cash position{" "}
+            <span
+              className={`font-semibold ${t.cashPosition >= 0 ? "text-gray-900" : "text-red-600"}`}
+            >
+              {naira(t.cashPosition)}
+            </span>
+          </p>
+          <button
+            onClick={() => setTab("capital")}
+            className="ml-auto text-xs font-medium text-gray-500 hover:text-gray-900 underline underline-offset-2"
+          >
+            View capital
+          </button>
+        </div>
+      )}
+
       {/* Empty ledger — offer one-click historical import (caps only) */}
       {!loading &&
         brand === "CAPS" &&
@@ -498,6 +569,18 @@ export default function FinancePage() {
           onEdit={(i) => setInteractionModal({ open: true, edit: i })}
           onDelete={deleteInteraction}
         />
+      ) : tab === "capital" ? (
+        <CapitalTab
+          entries={capital}
+          totals={
+            t
+              ? { capitalIn: t.capitalIn, capitalOut: t.capitalOut, cashPosition: t.cashPosition }
+              : null
+          }
+          onAdd={() => setCapitalModal({ open: true })}
+          onEdit={(e) => setCapitalModal({ open: true, edit: e })}
+          onDelete={deleteCapital}
+        />
       ) : (
         <>
           {/* Search */}
@@ -559,6 +642,17 @@ export default function FinancePage() {
           onClose={() => setInteractionModal({ open: false })}
           onSaved={() => {
             setInteractionModal({ open: false });
+            loadAll();
+          }}
+        />
+      )}
+      {capitalModal.open && (
+        <CapitalModal
+          brand={brand}
+          edit={capitalModal.edit}
+          onClose={() => setCapitalModal({ open: false })}
+          onSaved={() => {
+            setCapitalModal({ open: false });
             loadAll();
           }}
         />
@@ -2452,6 +2546,278 @@ function InteractionModal({
               rows={3}
               placeholder="How it went, next steps…"
               className={`${inputCls} resize-none`}
+            />
+          </Field>
+        </div>
+      </div>
+      <ModalActions saving={saving} onClose={onClose} onSubmit={submit} />
+    </ModalShell>
+  );
+}
+
+/* --------------------------- investor capital --------------------------- */
+
+const kindStyles: Record<CapitalKind, string> = {
+  CONTRIBUTION: "bg-green-50 text-green-700",
+  REPAYMENT: "bg-amber-50 text-amber-700",
+};
+
+function CapitalTab({
+  entries,
+  totals,
+  onAdd,
+  onEdit,
+  onDelete,
+}: {
+  entries: CapitalEntry[];
+  totals: { capitalIn: number; capitalOut: number; cashPosition: number } | null;
+  onAdd: () => void;
+  onEdit: (e: CapitalEntry) => void;
+  onDelete: (id: string) => void;
+}) {
+  // Per-investor rollup: contributed, repaid, outstanding principal.
+  const investors = new Map<
+    string,
+    { contributed: number; repaid: number }
+  >();
+  for (const e of entries) {
+    const row = investors.get(e.investor) ?? { contributed: 0, repaid: 0 };
+    if (e.kind === "CONTRIBUTION") row.contributed += e.amount;
+    else row.repaid += e.amount;
+    investors.set(e.investor, row);
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-x-8 gap-y-2">
+          <div>
+            <p className="text-xs text-gray-500">Capital raised</p>
+            <p className="text-xl font-semibold text-gray-900">
+              {naira(totals?.capitalIn)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Principal repaid</p>
+            <p className="text-xl font-semibold text-gray-900">
+              {naira(totals?.capitalOut)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">
+              Cash position (operations + capital)
+            </p>
+            <p
+              className={`text-xl font-semibold ${
+                (totals?.cashPosition ?? 0) >= 0 ? "text-gray-900" : "text-red-600"
+              }`}
+            >
+              {naira(totals?.cashPosition)}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={onAdd}
+          className="flex items-center gap-2 px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800"
+        >
+          <Plus size={16} /> Capital entry
+        </button>
+      </div>
+
+      <p className="text-xs text-gray-500 max-w-2xl leading-relaxed">
+        Principal only: money invested in, and principal paid back out. Profit
+        paid to investors is an expense (category INVESTOR_RETURN), so it stays
+        part of the real cost of running the business.
+      </p>
+
+      {/* Per-investor rollup */}
+      {investors.size > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...investors.entries()].map(([name, v]) => (
+            <div
+              key={name}
+              className="bg-white border border-gray-100 rounded-xl shadow-sm p-4"
+            >
+              <p className="font-medium text-gray-900">{name}</p>
+              <div className="mt-2 space-y-1 text-sm text-gray-600">
+                <div className="flex justify-between">
+                  <span>Contributed</span>
+                  <span className="font-medium text-gray-900">
+                    {naira(v.contributed)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Principal repaid</span>
+                  <span className="font-medium text-gray-900">
+                    {naira(v.repaid)}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-gray-100 pt-1 mt-1">
+                  <span>Outstanding</span>
+                  <span className="font-semibold text-gray-900">
+                    {naira(v.contributed - v.repaid)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Entries */}
+      {entries.length === 0 ? (
+        <EmptyState label="No capital recorded yet. Log each investor's contribution so investor money never mixes with profit." />
+      ) : (
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-gray-500 border-b border-gray-100">
+                <Th>Date</Th>
+                <Th>Investor</Th>
+                <Th>Type</Th>
+                <Th className="text-right">Amount</Th>
+                <Th>Notes</Th>
+                <Th />
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e) => (
+                <tr
+                  key={e.id}
+                  className="border-b border-gray-50 hover:bg-gray-50"
+                >
+                  <Td className="whitespace-nowrap text-gray-600">
+                    {fmtDate(e.date)}
+                  </Td>
+                  <Td className="font-medium text-gray-900">{e.investor}</Td>
+                  <Td>
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-medium ${kindStyles[e.kind]}`}
+                    >
+                      {e.kind === "CONTRIBUTION" ? "Contribution" : "Repayment"}
+                    </span>
+                  </Td>
+                  <Td className="text-right font-medium text-gray-900">
+                    {naira(e.amount)}
+                  </Td>
+                  <Td className="max-w-[260px] text-gray-500 text-xs">
+                    {e.notes || "—".replace("—", "-")}
+                  </Td>
+                  <Td>
+                    <RowActions
+                      onEdit={() => onEdit(e)}
+                      onDelete={() => onDelete(e.id)}
+                    />
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CapitalModal({
+  brand,
+  edit,
+  onClose,
+  onSaved,
+}: {
+  brand: BrandKey;
+  edit?: CapitalEntry;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    date: toDateInput(edit?.date),
+    investor: edit?.investor ?? "",
+    kind: edit?.kind ?? "CONTRIBUTION",
+    amount: edit?.amount ?? "",
+    notes: edit?.notes ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+
+  const submit = async () => {
+    if (!form.investor.trim()) {
+      alert("Investor name is required.");
+      return;
+    }
+    if (!form.amount || Number(form.amount) <= 0) {
+      alert("A positive amount is required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const url = edit
+        ? `/api/admin/finance/capital/${edit.id}`
+        : "/api/admin/finance/capital";
+      const res = await fetch(url, {
+        method: edit ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, brand }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "Save failed");
+      }
+      onSaved();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell
+      title={edit ? "Edit capital entry" : "Record capital"}
+      onClose={onClose}
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Date">
+          <input
+            type="date"
+            value={form.date}
+            onChange={(e) => set("date", e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Investor">
+          <input
+            value={form.investor}
+            onChange={(e) => set("investor", e.target.value)}
+            placeholder="who the money is from"
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Type">
+          <select
+            value={form.kind}
+            onChange={(e) => set("kind", e.target.value)}
+            className={inputCls}
+          >
+            <option value="CONTRIBUTION">Contribution (money in)</option>
+            <option value="REPAYMENT">Repayment (principal back)</option>
+          </select>
+        </Field>
+        <Field label="Amount (₦)">
+          <input
+            type="number"
+            value={form.amount}
+            onChange={(e) => set("amount", e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+        <div className="col-span-2">
+          <Field label="Notes">
+            <input
+              value={form.notes}
+              onChange={(e) => set("notes", e.target.value)}
+              placeholder="terms, what it funded (e.g. Oct restock)"
+              className={inputCls}
             />
           </Field>
         </div>

@@ -626,6 +626,32 @@ model Interaction {
   @@map("interactions")
 }
 
+// Investor capital — principal only. Money invested into the business and
+// principal paid back. Profit paid out to investors is NOT tracked here; that
+// is an Expense with category INVESTOR_RETURN (cost of capital).
+enum CapitalKind {
+  CONTRIBUTION // investor puts money in
+  REPAYMENT // principal paid back to the investor
+}
+
+model CapitalEntry {
+  id String @id @default(cuid())
+
+  brand    Brand       @default(CAPS)
+  date     DateTime
+  investor String // who the money came from / went to
+  kind     CapitalKind @default(CONTRIBUTION)
+  amount   Decimal     @db.Decimal(12, 2)
+  notes    String? // terms, context ("500k seed for Oct restock")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brand, date])
+  @@index([investor])
+  @@map("capital_entries")
+}
+
 enum SalePaymentStatus {
   PAID
   PARTIAL

@@ -46,6 +46,19 @@ export async function GET(request: NextRequest) {
         }),
       ]);
 
+    // Investor capital: principal in/out, kept OUT of revenue and profit.
+    const capitalByKind = await prisma.capitalEntry.groupBy({
+      by: ["kind"],
+      where: { brand },
+      _sum: { amount: true },
+    });
+    const capitalIn = Number(
+      capitalByKind.find((c) => c.kind === "CONTRIBUTION")?._sum.amount || 0
+    );
+    const capitalOut = Number(
+      capitalByKind.find((c) => c.kind === "REPAYMENT")?._sum.amount || 0
+    );
+
     const totalRevenue = Number(salesAgg._sum.totalCollected || 0);
     const totalProfit = Number(salesAgg._sum.profit || 0);
     // Delivery fees on sales are money paid out to couriers — count them as
@@ -92,6 +105,10 @@ export async function GET(request: NextRequest) {
         unitsSold,
         salesCount: salesAgg._count,
         expensesCount: expenseAgg._count,
+        capitalIn,
+        capitalOut,
+        // Actual cash through the business: operations plus financing.
+        cashPosition: totalRevenue - totalExpenses + capitalIn - capitalOut,
       },
       expensesByCategory: expensesByCategory
         .map((c) => ({
