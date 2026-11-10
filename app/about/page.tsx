@@ -1,29 +1,30 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
 import { fadeInUp, staggerContainer } from '@/animations/variants'
-import { Car, Award, Globe, Heart } from 'lucide-react'
+import { Car, Award, Truck, Heart } from 'lucide-react'
 
 const values = [
   {
     icon: Car,
     title: 'Automotive Passion',
     description:
-      'Every design is born from our deep love for automotive culture and the legendary machines that shaped it.',
+      'Everything we stock comes from a love of cars and racing: the teams, the badges and the culture around them.',
   },
   {
     icon: Award,
-    title: 'Premium Quality',
+    title: 'Picked with Care',
     description:
-      'We use only the finest materials and craftsmanship to create caps that stand the test of time.',
+      'Every drop is picked by car and F1 fans, for car and F1 fans.',
   },
   {
-    icon: Globe,
-    title: 'Global Community',
+    icon: Truck,
+    title: 'Delivered Nationwide',
     description:
-      'Connecting car enthusiasts worldwide through fashion that speaks to our shared passion.',
+      'Order online or on WhatsApp and we deliver across Nigeria, with GUO pickup centers in many states.',
   },
   {
     icon: Heart,
@@ -33,11 +34,12 @@ const values = [
   },
 ]
 
+// Real numbers only. Update as they grow.
 const stats = [
-  { value: '10K+', label: 'Happy Customers' },
-  { value: '50+', label: 'Unique Designs' },
-  { value: '15+', label: 'Countries Shipped' },
-  { value: '4.9', label: 'Customer Rating' },
+  { value: '400+', label: 'Pieces Sold' },
+  { value: '60+', label: 'Designs Dropped' },
+  { value: '36 + FCT', label: 'States We Deliver To' },
+  { value: '2024', label: 'Founded' },
 ]
 
 export default function AboutPage() {
@@ -58,9 +60,9 @@ export default function AboutPage() {
               OUR STORY
             </h1>
             <p className="text-gray-600 text-lg md:text-xl leading-relaxed">
-              Born from a passion for automotive excellence and streetwear culture,
-              JUSTFITS creates premium headwear that celebrates the world&apos;s most
-              iconic automobiles.
+              JUSTFITS is a Nigerian automotive and motorsport streetwear brand
+              for people who live for cars and racing. F1 team shirts, polos,
+              hoodies and caps, delivered anywhere in Nigeria.
             </p>
           </motion.div>
         </div>
@@ -81,21 +83,20 @@ export default function AboutPage() {
               </h2>
               <div className="space-y-4 text-gray-600 leading-relaxed">
                 <p>
-                  JUSTFITS was founded in 2024 with a simple mission: to create
-                  premium headwear that allows car enthusiasts to wear their
-                  passion proudly.
+                  JUSTFITS started in 2024 with car caps: Benz, BMW and AMG
+                  badges. Today we carry a full range of motorsport and
+                  automotive streetwear.
                 </p>
                 <p>
-                  We understand that for many, cars are more than just machines.
-                  They&apos;re works of art, feats of engineering, and symbols of
-                  dreams fulfilled. From the curves of a Porsche 911 to the raw
-                  power of a GT-R, every vehicle tells a story.
+                  That means F1 team shirts, polos and driver tees from Scuderia
+                  Ferrari, Mercedes-AMG Petronas, Red Bull Racing, McLaren and
+                  Aston Martin, BMW M Motorsport pieces, and caps for every badge
+                  in the garage.
                 </p>
                 <p>
-                  Our designs capture the essence of these automotive icons,
-                  translating their spirit into wearable art. Each cap is
-                  carefully crafted using premium materials, ensuring both style
-                  and comfort for the modern enthusiast.
+                  Our goal is simple: make motorsport fashion easy to get in
+                  Nigeria, for fans who want to rep their team beyond race
+                  weekend. JUSTFITS. Fits just right.
                 </p>
               </div>
             </motion.div>
@@ -134,7 +135,7 @@ export default function AboutPage() {
               WHAT DRIVES US
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Our core values shape everything we do, from design to delivery.
+              What we care about, from picking a drop to getting it to your door.
             </p>
           </motion.div>
 
@@ -208,15 +209,14 @@ export default function AboutPage() {
               JOIN THE MOVEMENT
             </h2>
             <p className="text-gray-400 mb-8 max-w-xl mx-auto">
-              Be part of a growing community of automotive enthusiasts who wear
-              their passion with pride.
+              Find your team, pick your badge, and rep it every day.
             </p>
-            <a
+            <Link
               href="/shop"
               className="inline-block bg-white text-black px-8 py-4 rounded-full font-medium hover:bg-gray-100 transition-colors"
             >
               Shop the Collection
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>

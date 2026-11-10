@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
       queryShopProducts(all, {
         search: searchParams.get("search") || "",
         category: searchParams.get("category") || "all",
+        collection: searchParams.get("collection") || undefined,
         featured: searchParams.get("featured") === "true",
         sort: searchParams.get("sort") || "featured",
         page: parseInt(searchParams.get("page") || "1"),

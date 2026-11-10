@@ -15,6 +15,16 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: ["@prisma/client", "prisma"],
+  async redirects() {
+    return [
+      // Product renamed (typo fix): keep old shared links working.
+      {
+        source: "/products/mercadez-benz-2025-driver-t-shirt",
+        destination: "/products/mercedes-benz-2025-driver-t-shirt",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

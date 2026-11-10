@@ -10,8 +10,10 @@ import { ShopClient } from "./ShopClient";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: "Shop",
-  description: "Shop car-culture caps and shirts from JUSTFITS.",
+  title: "Shop F1 & Motorsport Clothing, Caps and Shirts",
+  description:
+    "Shop every JUSTFITS piece: Ferrari, Mercedes-AMG Petronas, Red Bull Racing and BMW M shirts, polos, hoodies and car caps. Delivered across Nigeria.",
+  alternates: { canonical: "/shop" },
 };
 
 async function loadInitial() {

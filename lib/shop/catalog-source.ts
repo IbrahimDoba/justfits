@@ -166,10 +166,10 @@ export async function getInventoryProductBySlug(slug: string) {
     g.description?.trim() ||
     [
       g.brand
-        ? `Premium ${g.brand} ${kind} from JUSTFITS.`
-        : `Premium car-themed ${kind} from JUSTFITS.`,
+        ? `The ${g.name} is a ${g.brand} ${kind} from JUSTFITS, Nigeria's motorsport and automotive streetwear store.`
+        : `The ${g.name} is a car-culture ${kind} from JUSTFITS, Nigeria's motorsport and automotive streetwear store.`,
       sizeList.length ? `Available sizes: ${sizeList.join(", ")}.` : "",
-      "Message us on WhatsApp to order — we'll confirm your size, payment and delivery.",
+      "Delivered anywhere in Nigeria. Order online or message us on WhatsApp and we'll confirm your size, payment and delivery.",
     ]
       .filter(Boolean)
       .join(" ");

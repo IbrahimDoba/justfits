@@ -6,12 +6,13 @@ import { ArrowUpRight } from "lucide-react";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { TiltCard } from "@/components/animations/TiltCard";
 import { getImageBlurDataURL } from "@/lib/utils/imageBlur";
+import { COLLECTIONS } from "@/lib/seo/collections";
 
 const badges = [
   {
     name: "Benz",
     sub: "Three-pointed star",
-    href: "/shop/benz",
+    href: "/shop/mercedes",
     image: "/justfits/cbenz1.webp",
   },
   {
@@ -23,7 +24,7 @@ const badges = [
   {
     name: "AMG",
     sub: "Petronas team",
-    href: "/shop/amg",
+    href: "/shop/mercedes",
     image: "/justfits/blackbenzcap1.webp",
   },
 ];
@@ -99,11 +100,11 @@ export function BadgePicker() {
                   className="absolute inset-y-0 -left-1/2 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent -skew-x-12 opacity-0 group-hover:opacity-100 group-hover:translate-x-[320%] transition-all duration-700 ease-out"
                 />
                 <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/50">
-                  Ferrari, F1, Audi, Aston and more
+                  Ferrari, Red Bull, McLaren, Aston and more
                 </p>
                 <div>
                   <p className="font-display text-5xl leading-none">
-                    All caps
+                    Shop all
                   </p>
                   <p className="mt-3 inline-flex items-center gap-2 text-sm font-body uppercase tracking-wider text-white/70 group-hover:text-white transition-colors">
                     View all
@@ -117,6 +118,22 @@ export function BadgePicker() {
             </TiltCard>
           </ScrollReveal>
         </div>
+
+        {/* Text links to every collection (also helps search engines) */}
+        <nav aria-label="Shop by team" className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-black/40">
+            Shop by team
+          </span>
+          {COLLECTIONS.map((c) => (
+            <Link
+              key={c.slug}
+              href={`/shop/${c.slug}`}
+              className="font-body text-sm text-black/70 underline-offset-4 hover:text-black hover:underline"
+            >
+              {c.name}
+            </Link>
+          ))}
+        </nav>
       </div>
     </section>
   );

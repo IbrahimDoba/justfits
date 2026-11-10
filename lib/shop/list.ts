@@ -4,6 +4,7 @@ import {
   type ShopListProduct,
 } from "@/lib/shop/catalog-source";
 import { matchScore, tokenize } from "@/lib/shop/search";
+import { collectionMatches, findCollection } from "@/lib/seo/collections";
 
 // Shared filter/sort/paging for the public product list. Used by
 // /api/products and by the server-rendered /shop pages, so the first paint
@@ -14,6 +15,8 @@ export type PublicListProduct = Omit<ShopListProduct, "hasImage">;
 export interface ShopQuery {
   search?: string;
   category?: string;
+  // Curated SEO collection slug (lib/seo/collections.ts).
+  collection?: string;
   featured?: boolean;
   sort?: string;
   page?: number;
@@ -54,6 +57,10 @@ export function queryShopProducts(all: ShopListProduct[], q: ShopQuery) {
   }
   if (category && category !== "all") {
     all = all.filter((p) => p.categorySlug === category);
+  }
+  const collection = q.collection ? findCollection(q.collection) : null;
+  if (collection) {
+    all = all.filter((p) => collectionMatches(collection, p));
   }
   if (q.featured) {
     const flagged = all.filter((p) => p.featured);

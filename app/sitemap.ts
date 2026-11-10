@@ -1,6 +1,11 @@
 import { MetadataRoute } from "next";
 import { prisma } from "@/lib/db/prisma";
 import { siteConfig } from "@/config/siteConfig";
+import { inventorySlug } from "@/lib/inventory/slug";
+import { COLLECTIONS } from "@/lib/seo/collections";
+
+// Regenerate hourly so new stock appears without a deploy.
+export const revalidate = 3600;
 
 const baseUrl = siteConfig.url.replace(/\/$/, "");
 
@@ -59,81 +64,33 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // ─── Dynamic product pages ────────────────────────────────────────────────────
+  // ─── Product pages (inventory is the source of truth) ─────────────────────────
+  // Sold-out products still render (as "sold out"), so they stay listed.
   let productPages: MetadataRoute.Sitemap = [];
   try {
-    const products = await prisma.product.findMany({
+    const items = await prisma.inventoryItem.groupBy({
+      by: ["name"],
       where: { isActive: true },
-      select: { slug: true, updatedAt: true },
-      orderBy: { updatedAt: "desc" },
+      _max: { updatedAt: true },
+      _sum: { quantity: true },
     });
-
-    productPages = products.map((product) => ({
-      url: `${baseUrl}/products/${product.slug}`,
-      lastModified: product.updatedAt,
+    productPages = items.map((i) => ({
+      url: `${baseUrl}/products/${inventorySlug(i.name)}`,
+      lastModified: i._max.updatedAt ?? now,
       changeFrequency: "weekly" as const,
-      priority: 0.85,
+      priority: (i._sum.quantity ?? 0) > 0 ? 0.85 : 0.4,
     }));
   } catch {
-    // DB unavailable at build time — skip dynamic product pages gracefully
+    // DB unavailable at build time: skip product pages gracefully
   }
 
-  // ─── Dynamic category pages ───────────────────────────────────────────────────
-  let categoryPages: MetadataRoute.Sitemap = [];
-  try {
-    const categories = await prisma.category.findMany({
-      select: { slug: true, updatedAt: true },
-      orderBy: { updatedAt: "desc" },
-    });
+  // ─── Curated collection pages ─────────────────────────────────────────────────
+  const collectionPages: MetadataRoute.Sitemap = COLLECTIONS.map((c) => ({
+    url: `${baseUrl}/shop/${c.slug}`,
+    lastModified: now,
+    changeFrequency: "daily" as const,
+    priority: 0.8,
+  }));
 
-    categoryPages = categories.map((category) => ({
-      url: `${baseUrl}/shop/${category.slug}`,
-      lastModified: category.updatedAt,
-      changeFrequency: "weekly" as const,
-      priority: 0.75,
-    }));
-  } catch {
-    // DB unavailable at build time — skip dynamic category pages gracefully
-  }
-
-  // ─── Blog pages ───────────────────────────────────────────────────────────────
-  // Static blog index — always included once /blog route exists
-  const blogIndexPage: MetadataRoute.Sitemap = [
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-  ];
-
-  // Dynamic blog post pages — populated once a BlogPost model exists in Prisma
-  let blogPostPages: MetadataRoute.Sitemap = [];
-  try {
-    // @ts-expect-error — BlogPost model will be added when the blog feature is built
-    const posts = await prisma.blogPost.findMany({
-      where: { published: true },
-      select: { slug: true, updatedAt: true },
-      orderBy: { updatedAt: "desc" },
-    });
-
-    blogPostPages = posts.map(
-      (post: { slug: string; updatedAt: Date }) => ({
-        url: `${baseUrl}/blog/${post.slug}`,
-        lastModified: post.updatedAt,
-        changeFrequency: "monthly" as const,
-        priority: 0.7,
-      })
-    );
-  } catch {
-    // BlogPost model not yet in schema — skip gracefully
-  }
-
-  return [
-    ...staticPages,
-    ...productPages,
-    ...categoryPages,
-    ...blogIndexPage,
-    ...blogPostPages,
-  ];
+  return [...staticPages, ...collectionPages, ...productPages];
 }

@@ -3,6 +3,15 @@ import { notFound } from "next/navigation";
 import { getProductBySlug } from "@/lib/data/product";
 import { ProductDetailClient } from "./ProductDetailClient";
 import { siteConfig } from "@/config/siteConfig";
+import { findCollection } from "@/lib/seo/collections";
+import { JsonLd, breadcrumbLd, productLd } from "@/lib/seo/jsonld";
+
+// ~155 chars on a word boundary, for search snippets.
+function snippet(text: string, max = 155) {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (t.length <= max) return t;
+  return t.slice(0, t.lastIndexOf(" ", max)).replace(/[,.;:]$/, "") + "…";
+}
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -21,18 +30,21 @@ export async function generateMetadata({
   }
 
   const { product } = data;
-  const title = product.metaTitle || `${product.name} | ${siteConfig.name}`;
-  const description = product.metaDescription || product.description;
+  // The root title template already appends "| JUSTFITS".
+  const title = product.metaTitle || product.name;
+  const description = snippet(product.metaDescription || product.description);
+  const url = `/products/${product.slug}`;
   const image = product.images[0] || siteConfig.ogImage;
 
   return {
     title,
     description,
+    alternates: { canonical: url },
     openGraph: {
       title,
       description,
       type: "website",
-      url: `${siteConfig.url}/products/${product.slug}`,
+      url,
       images: [
         {
           url: image,
@@ -59,10 +71,27 @@ export default async function ProductDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const { product } = data;
+  const collection = findCollection(product.categorySlug);
   return (
-    <ProductDetailClient
-      product={data.product}
-      relatedProducts={data.relatedProducts}
-    />
+    <>
+      <JsonLd
+        data={[
+          productLd(product),
+          breadcrumbLd([
+            { name: "Home", path: "/" },
+            {
+              name: collection?.name ?? "Shop",
+              path: collection ? `/shop/${collection.slug}` : "/shop",
+            },
+            { name: product.name, path: `/products/${product.slug}` },
+          ]),
+        ]}
+      />
+      <ProductDetailClient
+        product={data.product}
+        relatedProducts={data.relatedProducts}
+      />
+    </>
   );
 }

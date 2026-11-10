@@ -20,8 +20,6 @@ export default function robots(): MetadataRoute.Robots {
           "/returns",
           "/privacy",
           "/terms",
-          "/blog",
-          "/blog/",
         ],
         disallow: [
           "/admin",

@@ -58,6 +58,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Suspense } from "react";
 import { Tracker } from "@/components/analytics/Tracker";
 import Script from "next/script";
+import { JsonLd, organizationLd, websiteLd } from "@/lib/seo/jsonld";
 
 export default function RootLayout({
   children,
@@ -66,10 +67,11 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="en-NG"
       className={`${inter.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable}`}
     >
       <body className="antialiased">
+        <JsonLd data={[organizationLd(), websiteLd()]} />
         <SessionProvider>
           <QueryProvider>
             <ToastProvider>

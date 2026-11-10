@@ -96,8 +96,8 @@ export function Hero() {
               className="hero-rise mt-6 text-lg md:text-xl font-body text-black/60 max-w-md leading-relaxed"
               style={{ animationDelay: "120ms" }}
             >
-              Car-culture caps for Benz people, BMW people, and everyone who
-              knows the difference.
+              F1 team shirts, polos and car caps for Benz people, Ferrari
+              people, and everyone who knows the difference.
             </p>
 
             <div className="hero-rise mt-10" style={{ animationDelay: "240ms" }}>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Hero } from "@/components/layout/Hero";
 import { Marquee } from "@/components/layout/Marquee";
@@ -7,6 +8,9 @@ import { WhyJustFits } from "@/components/layout/WhyJustFits";
 import { CarsBridge } from "@/components/layout/CarsBridge";
 import { FAQ } from "@/components/layout/FAQ";
 import { Footer } from "@/components/layout/Footer";
+
+// Title/description come from the site defaults (config/siteConfig.ts).
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default function Home() {
   return (

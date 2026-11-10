@@ -2,25 +2,36 @@ import { Metadata } from "next";
 
 export const siteConfig = {
   name: "JUSTFITS",
-  title: "JUSTFITS - Premium Car-Themed Caps",
+  title: "JUSTFITS Nigeria | F1, Motorsport & Automotive Streetwear",
   description:
-    "Premium car-themed caps featuring Mercedes-Benz, BMW, Porsche designs. Limited drops, high quality, global appeal.",
-  url: process.env.NEXT_PUBLIC_BASE_URL || "https://justfitsng.com",
+    "Shop F1 and motorsport clothing in Nigeria: Ferrari, Mercedes-AMG Petronas, Red Bull Racing and BMW M shirts, polos, hoodies and caps. Nationwide delivery from JUSTFITS.",
+  // One consistent brand description (structured data, About page, profiles).
+  brandDescription:
+    "JUSTFITS is a Nigerian automotive and motorsport streetwear brand selling F1 team shirts, polos, hoodies and caps for fans of Ferrari, Mercedes-AMG Petronas, Red Bull Racing, BMW M and more, with delivery across Nigeria.",
+  // Production always uses the real domain so canonicals, sitemap and
+  // structured data can never point at a preview or localhost URL.
+  url:
+    process.env.VERCEL_ENV === "production"
+      ? "https://justfitsng.com"
+      : process.env.NEXT_PUBLIC_BASE_URL || "https://justfitsng.com",
   ogImage: "/og-image.jpg",
   links: {
     instagram: "https://instagram.com/justfitsng",
     twitter: "https://twitter.com/justfitsng",
   },
   keywords: [
-    "caps",
-    "hats",
-    "car themed",
-    "Mercedes-Benz",
-    "BMW",
-    "Porsche",
-    "premium caps",
-    "luxury streetwear",
-    "Nigeria fashion",
+    "F1 clothing Nigeria",
+    "motorsport clothing Nigeria",
+    "F1 shirts Nigeria",
+    "F1 caps Nigeria",
+    "Ferrari shirts Nigeria",
+    "Mercedes AMG Petronas",
+    "BMW Motorsport",
+    "Red Bull Racing",
+    "automotive streetwear",
+    "car caps",
+    "Abuja",
+    "Lagos",
   ],
 };
 
@@ -36,7 +47,7 @@ export const defaultMetadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "en_NG",
     url: siteConfig.url,
     siteName: siteConfig.name,
     title: siteConfig.title,

@@ -23,26 +23,30 @@ function formatPrice(price: number): string {
   }).format(price);
 }
 
-// A slug is either a real category (caps/shirts) or a brand/keyword like
-// "benz" or "red-bull". The server resolves which and renders the first
+// A slug is either a curated collection (lib/seo/collections.ts) or a free
+// brand/keyword like "honda". The server resolves which and renders the first
 // view; this component only handles re-sorting.
 export function CollectionClient({
   title,
-  categorySlug,
+  intro,
+  collectionSlug,
   searchTerm,
   initialProducts,
+  related,
 }: {
   title: string;
-  categorySlug: string | null;
+  intro: string | null;
+  collectionSlug: string | null;
   searchTerm: string;
   initialProducts?: PublicListProduct[];
+  related: { slug: string; name: string }[];
 }) {
   const [sortBy, setSortBy] = useState(DEFAULT_SORT);
   const [interacted, setInteracted] = useState(false);
-  const isBrandSearch = !categorySlug;
+  const isBrandSearch = !collectionSlug;
 
   const { data: products = [], isLoading } = useProducts({
-    category: categorySlug ?? "all",
+    collection: collectionSlug ?? "",
     search: isBrandSearch ? searchTerm : "",
     sort: sortBy,
     limit: SHOP_PAGE_LIMIT,
@@ -81,6 +85,11 @@ export function CollectionClient({
             <h1 className="font-display text-5xl md:text-7xl text-black tracking-tight mb-6">
               {title}
             </h1>
+            {intro && (
+              <p className="text-gray-600 text-base md:text-lg leading-relaxed">
+                {intro}
+              </p>
+            )}
             <p className="text-sm text-gray-500 mt-4">
               {isLoading ? (
                 "Loading…"
@@ -158,6 +167,34 @@ export function CollectionClient({
                   </motion.div>
                 ))}
               </motion.div>
+
+              {related.length > 0 && (
+                <nav
+                  aria-label="Related collections"
+                  className="mt-16 border-t border-gray-200 pt-10"
+                >
+                  <h2 className="font-display text-3xl text-black mb-5">
+                    Keep browsing
+                  </h2>
+                  <div className="flex flex-wrap gap-3">
+                    {related.map((r) => (
+                      <Link
+                        key={r.slug}
+                        href={`/shop/${r.slug}`}
+                        className="px-5 py-2.5 rounded-full text-sm font-medium bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 transition-colors"
+                      >
+                        {r.name}
+                      </Link>
+                    ))}
+                    <Link
+                      href="/shop"
+                      className="px-5 py-2.5 rounded-full text-sm font-medium bg-black text-white hover:bg-black/90 transition-colors"
+                    >
+                      Shop all
+                    </Link>
+                  </div>
+                </nav>
+              )}
 
               {products.length === 0 && (
                 <div className="text-center py-20">

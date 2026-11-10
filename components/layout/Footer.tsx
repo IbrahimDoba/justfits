@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Instagram, Twitter, Check, X } from "lucide-react";
+import { COLLECTIONS } from "@/lib/seo/collections";
 
 const footerLinks = {
   company: [
@@ -23,37 +24,11 @@ const socialLinks = [
   { label: "Twitter", href: "https://twitter.com/Dobaibrahim", icon: Twitter },
 ];
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  productCount: number;
-}
-
 export function Footer() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
-  const [collections, setCollections] = useState<Category[]>([]);
-
-  // Fetch collections for footer
-  useEffect(() => {
-    async function fetchCollections() {
-      try {
-        const response = await fetch("/api/categories");
-        const data = await response.json();
-        // Filter out "All" category and limit to main collections
-        const mainCollections = data.categories
-          .filter((cat: Category) => cat.slug !== "all")
-          .slice(0, 4);
-        setCollections(mainCollections);
-      } catch (error) {
-        console.error("Failed to fetch collections:", error);
-      }
-    }
-    fetchCollections();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,10 +209,10 @@ export function Footer() {
                     href="/shop"
                     className="text-sm font-body text-black/40 hover:text-black transition-colors"
                   >
-                    All Caps
+                    Shop All
                   </Link>
                 </li>
-                {collections.map((collection) => (
+                {COLLECTIONS.map((collection) => (
                   <li key={collection.slug}>
                     <Link
                       href={`/shop/${collection.slug}`}

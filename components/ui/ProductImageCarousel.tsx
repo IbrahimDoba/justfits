@@ -83,7 +83,7 @@ export function ProductImageCarousel({
                 <div className="relative w-full aspect-[3/4] lg:aspect-[4/5] max-h-[60vh] lg:max-h-none bg-gray-50">
                   <Image
                     src={image}
-                    alt={`${productName} ${index + 1}`}
+                    alt={index === 0 ? `${productName} at JUSTFITS Nigeria` : `${productName}, view ${index + 1}`}
                     fill
                     sizes="(max-width: 1024px) 100vw, 50vw"
                     className="object-contain"
