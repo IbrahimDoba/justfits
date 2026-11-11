@@ -36,6 +36,7 @@ import {
   Car,
   ShoppingBag,
   HandCoins,
+  Calculator,
 } from "lucide-react";
 import { CARRIER_OPTIONS, getCarrier, CARRIERS } from "@/lib/shipping/carriers";
 
@@ -227,6 +228,7 @@ export default function FinancePage() {
   const [saleModal, setSaleModal] = useState<{ open: boolean; edit?: Sale }>({
     open: false,
   });
+  const [profitModal, setProfitModal] = useState(false);
   const [expenseModal, setExpenseModal] = useState<{
     open: boolean;
     edit?: Expense;
@@ -584,17 +586,28 @@ export default function FinancePage() {
       ) : (
         <>
           {/* Search */}
-          <div className="relative mb-4 max-w-sm">
-            <Search
-              size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${tab}…`}
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10"
-            />
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <div className="relative flex-1 min-w-0 max-w-sm">
+              <Search
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={`Search ${tab}…`}
+                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-black/10"
+              />
+            </div>
+            {tab === "sales" && (
+              <button
+                onClick={() => setProfitModal(true)}
+                title="Work out profit from inventory costs: collected − cost − delivery"
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-200"
+              >
+                <Calculator size={16} /> Recalculate profit
+              </button>
+            )}
           </div>
 
           {tab === "sales" ? (
@@ -613,6 +626,16 @@ export default function FinancePage() {
         </>
       )}
 
+      {profitModal && (
+        <ProfitRecalcModal
+          brand={brand}
+          onClose={() => setProfitModal(false)}
+          onSaved={() => {
+            setProfitModal(false);
+            loadAll();
+          }}
+        />
+      )}
       {saleModal.open && (
         <SaleModal
           brand={brand}
@@ -1539,6 +1562,184 @@ function ModalShell({
   );
 }
 
+/* ------------------------- profit recalculation ------------------------- */
+
+type ProfitChange = {
+  id: string;
+  date: string;
+  customerName: string;
+  productText: string;
+  paymentStatus: string;
+  totalCollected: number;
+  current: number | null;
+  calculated: number;
+};
+
+// Previews every paid sale whose stored profit is blank or doesn't match
+// collected − inventory cost − delivery, and lets you apply the ticked ones.
+function ProfitRecalcModal({
+  brand,
+  onClose,
+  onSaved,
+}: {
+  brand: BrandKey;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [changes, setChanges] = useState<ProfitChange[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/admin/finance/sales/recalculate-profit?brand=${brand}`)
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error || "Failed to calculate");
+        const rows: ProfitChange[] = d.changes;
+        setChanges(rows);
+        // Negative results usually mean "collected" was entered wrong, so
+        // those start unticked for a manual look.
+        setSelected(new Set(rows.filter((c) => c.calculated >= 0).map((c) => c.id)));
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed"));
+  }, [brand]);
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const delta = (changes ?? [])
+    .filter((c) => selected.has(c.id))
+    .reduce((s, c) => s + c.calculated - (c.current ?? 0), 0);
+
+  const apply = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/finance/sales/recalculate-profit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brand, ids: [...selected] }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || "Update failed");
+      onSaved();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Update failed");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell title="Recalculate profit" onClose={onClose}>
+      <p className="text-sm text-gray-600 mb-4">
+        Profit = collected − landed cost of the items − delivery. Only paid
+        sales linked to inventory with a cost price are checked.
+      </p>
+
+      {error ? (
+        <p className="text-sm text-red-600">{error}</p>
+      ) : changes === null ? (
+        <div className="flex justify-center py-10 text-gray-400">
+          <Loader2 className="animate-spin" size={22} />
+        </div>
+      ) : changes.length === 0 ? (
+        <p className="text-sm text-gray-700 py-6 text-center">
+          Every calculable sale already has the right profit.
+        </p>
+      ) : (
+        <>
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+            <span>
+              {changes.length} sale{changes.length === 1 ? "" : "s"} to fix
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setSelected(
+                  selected.size === changes.length
+                    ? new Set()
+                    : new Set(changes.map((c) => c.id))
+                )
+              }
+              className="font-medium text-gray-700 hover:text-black"
+            >
+              {selected.size === changes.length ? "Untick all" : "Tick all"}
+            </button>
+          </div>
+          <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg mb-4">
+            {changes.map((c) => (
+              <li key={c.id}>
+                <label className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(c.id)}
+                    onChange={() => toggle(c.id)}
+                    className="mt-1 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-medium text-gray-900 truncate">
+                        {c.customerName}
+                      </span>
+                      <span className="text-xs text-gray-400 shrink-0">
+                        {fmtDate(c.date)}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-400 truncate">
+                      {c.productText} · collected {naira(c.totalCollected)}
+                    </div>
+                    <div className="text-sm mt-0.5">
+                      <span className="text-gray-400 line-through mr-2">
+                        {c.current === null ? "none" : naira(c.current)}
+                      </span>
+                      <span
+                        className={
+                          c.calculated < 0
+                            ? "font-semibold text-red-600"
+                            : "font-semibold text-gray-900"
+                        }
+                      >
+                        {naira(c.calculated)}
+                      </span>
+                      {c.calculated < 0 && (
+                        <span className="ml-2 text-xs text-red-500">
+                          check collected amount
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-sm text-gray-600">
+              Sales profit changes by{" "}
+              <span className="font-semibold text-gray-900">
+                {delta >= 0 ? "+" : "−"}
+                {naira(Math.abs(delta))}
+              </span>
+            </span>
+            <button
+              onClick={apply}
+              disabled={saving || selected.size === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50"
+            >
+              {saving && <Loader2 className="animate-spin" size={14} />}
+              Update {selected.size} sale{selected.size === 1 ? "" : "s"}
+            </button>
+          </div>
+        </>
+      )}
+    </ModalShell>
+  );
+}
+
 /* --------------------- product picker (image dropdown) --------------------- */
 
 function ProductPicker({
@@ -1761,9 +1962,15 @@ function SaleModal({
 
   // Preview of the server's auto profit: collected − item costs − delivery.
   // Only when every line is linked to inventory with a known cost price.
+  // Items loaded from an existing sale carry no cost, so fall back to the
+  // inventory list once it has loaded.
+  const costOf = (i: SaleLineItem) =>
+    i.costPrice ??
+    inventory.find((inv) => inv.id === i.inventoryItemId)?.costPrice ??
+    null;
   const allCosted =
     items.length > 0 &&
-    items.every((i) => i.inventoryItemId && i.costPrice != null);
+    items.every((i) => i.inventoryItemId && costOf(i) != null);
   const previewFee =
     form.deliveryFee === "" ? 0 : Number(form.deliveryFee) || 0;
   const previewCollected =
@@ -1772,7 +1979,7 @@ function SaleModal({
       : Number(form.totalCollected) || 0;
   const estProfit = allCosted
     ? previewCollected -
-      items.reduce((s, i) => s + i.quantity * (i.costPrice ?? 0), 0) -
+      items.reduce((s, i) => s + i.quantity * (costOf(i) ?? 0), 0) -
       previewFee
     : null;
 
@@ -2223,6 +2430,15 @@ function SaleModal({
             }
             className={inputCls}
           />
+          {estProfit !== null && Number(form.profit) !== estProfit && (
+            <button
+              type="button"
+              onClick={() => set("profit", estProfit)}
+              className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-black"
+            >
+              <Calculator size={12} /> Use auto: {naira(estProfit)}
+            </button>
+          )}
         </Field>
         <Field label="Payment status">
           <select
