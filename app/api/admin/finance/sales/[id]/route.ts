@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth/admin-guard";
+import {
+  OversellError,
+  deductSaleStock,
+  isLotTracked,
+  restoreSaleStock,
+} from "@/lib/inventory/lots";
 import { getCarrier } from "@/lib/shipping/carriers";
 import type { Prisma } from "@prisma/client";
 
@@ -119,6 +125,20 @@ export async function PATCH(
     }
 
     const sale = await prisma.$transaction(async (tx) => {
+      // Lot-tracked sales keep stock in step: replacing items puts the old
+      // units back and draws the new ones; marking RETURNED restocks.
+      const existing = await tx.sale.findUnique({
+        where: { id },
+        select: { deductedStock: true, paymentStatus: true },
+      });
+      const tracked = !!existing?.deductedStock && (await isLotTracked(tx, id));
+      const returning =
+        tracked &&
+        data.paymentStatus === "RETURNED" &&
+        existing?.paymentStatus !== "RETURNED";
+      if (tracked && (hasItems || returning)) await restoreSaleStock(tx, id);
+      if (returning) data.deductedStock = false;
+
       const updated = await tx.sale.update({ where: { id }, data });
       if (hasItems) {
         await tx.saleItem.deleteMany({ where: { saleId: id } });
@@ -134,12 +154,16 @@ export async function PATCH(
             })),
           });
         }
+        if (tracked && !returning) await deductSaleStock(tx, id);
       }
       return updated;
     });
 
     return NextResponse.json({ sale });
   } catch (error) {
+    if (error instanceof OversellError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     console.error("Finance sales PATCH error:", error);
     return NextResponse.json(
       { error: "Failed to update sale" },
@@ -160,7 +184,17 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    await prisma.sale.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const sale = await tx.sale.findUnique({
+        where: { id },
+        select: { deductedStock: true },
+      });
+      // Lot-tracked sales put their units back; older sales are unchanged.
+      if (sale?.deductedStock && (await isLotTracked(tx, id))) {
+        await restoreSaleStock(tx, id);
+      }
+      await tx.sale.delete({ where: { id } });
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Finance sales DELETE error:", error);

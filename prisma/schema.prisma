@@ -581,6 +581,11 @@ model SaleItem {
   quantity  Int     @default(1)
   unitPrice Decimal @db.Decimal(10, 2) // price this item was sold at
 
+  // Landed cost per unit recognised at sale time (weighted across the stock
+  // lots it was drawn from). Null on sales made before batch tracking.
+  unitCost Decimal?      @db.Decimal(10, 2)
+  lots     SaleItemLot[]
+
   createdAt DateTime @default(now())
 
   @@index([saleId])
@@ -598,12 +603,21 @@ model Expense {
   amount      Decimal         @db.Decimal(10, 2)
   notes       String?
 
+  // Optional link to the stock batch this money was spent on. inBatchCost =
+  // part of the batch's landed cost (purchase, freight, customs): inventory
+  // investment, not an operating expense. Otherwise the link only attributes
+  // the expense (e.g. ads) to the batch for batch reports.
+  batchId     String?
+  batch       StockBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  inBatchCost Boolean     @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([date])
   @@index([category])
   @@index([brand])
+  @@index([batchId])
   @@map("expenses")
 }
 
@@ -707,6 +721,77 @@ model InventoryItem {
   @@index([productId])
   @@index([category])
   @@map("inventory_items")
+}
+
+// ============================================
+// STOCK BATCHES — each purchase of stock, and the cost layers (lots) it adds
+// to inventory. Sales draw units from the oldest lot first (FIFO).
+// ============================================
+
+enum StockBatchStatus {
+  ORDERED
+  IN_TRANSIT
+  RECEIVED
+}
+
+model StockBatch {
+  id String @id @default(cuid())
+
+  brand      Brand            @default(CAPS)
+  label      String
+  orderDate  DateTime
+  receivedAt DateTime?
+  status     StockBatchStatus @default(ORDERED)
+  supplier   String?
+  notes      String?
+  isOpening  Boolean          @default(false) // stock on hand when tracking began
+
+  lots     StockLot[]
+  expenses Expense[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brand, orderDate])
+  @@map("stock_batches")
+}
+
+model StockLot {
+  id      String     @id @default(cuid())
+  batchId String
+  batch   StockBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  inventoryItemId String
+  quantityReceived  Int
+  quantityRemaining Int
+
+  unitCost       Decimal @db.Decimal(10, 2) // purchase price per unit
+  landedUnitCost Decimal @db.Decimal(10, 2) // + share of freight/customs
+
+  allocations SaleItemLot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([batchId])
+  @@index([inventoryItemId])
+  @@map("stock_lots")
+}
+
+// Which lot(s) a sold line item came from, at what cost.
+model SaleItemLot {
+  id         String   @id @default(cuid())
+  saleItemId String
+  saleItem   SaleItem @relation(fields: [saleItemId], references: [id], onDelete: Cascade)
+  lotId      String
+  lot        StockLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  quantity Int
+  unitCost Decimal @db.Decimal(10, 2)
+
+  @@index([saleItemId])
+  @@index([lotId])
+  @@map("sale_item_lots")
 }
 
 enum InventoryCategory {

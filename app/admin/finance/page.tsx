@@ -39,6 +39,7 @@ import {
   Calculator,
 } from "lucide-react";
 import { CARRIER_OPTIONS, getCarrier, CARRIERS } from "@/lib/shipping/carriers";
+import { BatchesTab } from "./BatchesTab";
 
 /* ------------------------------ types ------------------------------ */
 
@@ -204,10 +205,11 @@ type Tab =
   | "shipments"
   | "analysis"
   | "log"
-  | "capital";
+  | "capital"
+  | "batches";
 
 const TABS_BY_BRAND: Record<BrandKey, Tab[]> = {
-  CAPS: ["overview", "sales", "expenses", "capital", "shipments", "analysis"],
+  CAPS: ["overview", "sales", "expenses", "batches", "capital", "shipments", "analysis"],
   CARS: ["overview", "sales", "expenses", "capital", "log"],
 };
 
@@ -571,6 +573,8 @@ export default function FinancePage() {
           onEdit={(i) => setInteractionModal({ open: true, edit: i })}
           onDelete={deleteInteraction}
         />
+      ) : tab === "batches" ? (
+        <BatchesTab brand={brand} expenses={expenses} onChanged={loadAll} />
       ) : tab === "capital" ? (
         <CapitalTab
           entries={capital}

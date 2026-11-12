@@ -2,8 +2,10 @@ import { prisma } from "@/lib/db/prisma";
 import type { Brand } from "@prisma/client";
 
 // Real profit = collected − landed cost of the items − delivery paid out.
-// Same formula the sale POST uses when profit is left blank. Only sales whose
-// every line item is linked to inventory with a known cost can be calculated.
+// Same formula the sale POST uses when profit is left blank. Uses the cost
+// recorded on the sale (from its stock lots) when present, else the inventory
+// cost price. Only sales whose every line item is linked to inventory with a
+// known cost can be calculated.
 // Pending/returned sales are skipped: nothing has been earned on them yet.
 
 export type ProfitRecalcRow = {
@@ -52,7 +54,13 @@ export async function calculateSaleProfits(
     let cogs = 0;
     let costed = true;
     for (const it of s.items) {
-      const cost = it.inventoryItemId ? costById.get(it.inventoryItemId) : null;
+      // Lot-tracked items carry the landed cost recognised at sale time.
+      const cost =
+        it.unitCost !== null
+          ? Number(it.unitCost)
+          : it.inventoryItemId
+            ? costById.get(it.inventoryItemId)
+            : null;
       if (cost === null || cost === undefined) {
         costed = false;
         break;

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth/admin-guard";
 import type { Prisma } from "@prisma/client";
 import { EXPENSE_CATEGORIES } from "@/lib/finance/constants";
+import { recomputeLandedCosts } from "@/lib/inventory/lots";
 
 // PATCH /api/admin/finance/expenses/[id]
 export async function PATCH(
@@ -27,7 +28,12 @@ export async function PATCH(
     if (body.amount !== undefined) data.amount = Number(body.amount);
     if (body.notes !== undefined) data.notes = body.notes?.trim() || null;
 
-    const expense = await prisma.expense.update({ where: { id }, data });
+    // A batch's landed cost depends on its linked expenses.
+    const expense = await prisma.$transaction(async (tx) => {
+      const updated = await tx.expense.update({ where: { id }, data });
+      if (updated.batchId) await recomputeLandedCosts(tx, updated.batchId);
+      return updated;
+    });
     return NextResponse.json({ expense });
   } catch (error) {
     console.error("Finance expenses PATCH error:", error);
@@ -50,7 +56,10 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    await prisma.expense.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      const deleted = await tx.expense.delete({ where: { id } });
+      if (deleted.batchId) await recomputeLandedCosts(tx, deleted.batchId);
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Finance expenses DELETE error:", error);

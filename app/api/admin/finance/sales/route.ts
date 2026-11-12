@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth/admin-guard";
 import { getCarrier } from "@/lib/shipping/carriers";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { OversellError, drawFromLots } from "@/lib/inventory/lots";
 
 const PAYMENT_STATUSES = ["PAID", "PARTIAL", "PENDING", "RETURNED"] as const;
 
-class OversellError extends Error {}
 
 // GET /api/admin/finance/sales - list offline sales (optional filters)
 export async function GET(request: NextRequest) {
@@ -148,10 +148,9 @@ export async function POST(request: NextRequest) {
     // Auto-calculated when not provided, if every line item is linked to an
     // inventory record with a known costPrice. (If the customer paid delivery
     // it is inside totalCollected, so subtracting the fee is correct either way.)
-    let profit =
-      body.profit === null || body.profit === undefined || body.profit === ""
-        ? null
-        : Number(body.profit);
+    const autoProfit =
+      body.profit === null || body.profit === undefined || body.profit === "";
+    let profit = autoProfit ? null : Number(body.profit);
     if (profit === null && items.length > 0) {
       const ids = items
         .map((i) => i.inventoryItemId)
@@ -236,6 +235,37 @@ export async function POST(request: NextRequest) {
             where: { id: i.inventoryItemId },
             data: { quantity: { decrement: i.quantity } },
           });
+        }
+
+        // Draw each line from its stock lots (oldest batch first) and record
+        // the landed cost recognised on this sale.
+        let cogs = 0;
+        let costed = true;
+        for (const line of created.items) {
+          if (!line.inventoryItemId) {
+            costed = false;
+            continue;
+          }
+          const { draws, unitCost } = await drawFromLots(
+            tx,
+            line.inventoryItemId,
+            line.quantity
+          );
+          if (draws.length) {
+            await tx.saleItemLot.createMany({
+              data: draws.map((d) => ({ saleItemId: line.id, ...d })),
+            });
+          }
+          if (unitCost === null) costed = false;
+          else {
+            cogs += unitCost * line.quantity;
+            await tx.saleItem.update({ where: { id: line.id }, data: { unitCost } });
+          }
+        }
+        if (autoProfit && costed) {
+          const lotProfit = totalCollected - cogs - (deliveryFee || 0);
+          await tx.sale.update({ where: { id: created.id }, data: { profit: lotProfit } });
+          created.profit = new Prisma.Decimal(lotProfit);
         }
       }
 
