@@ -786,11 +786,7 @@ function ReceiveModal({
   useEffect(() => {
     fetch("/api/admin/inventory")
       .then((r) => r.json())
-      .then((d) =>
-        setInventory(
-          (Array.isArray(d.items) ? d.items : []).filter((i: InventoryLite) => i.isActive)
-        )
-      )
+      .then((d) => setInventory(Array.isArray(d.items) ? d.items : []))
       .catch(() => setInventory([]));
   }, []);
 
@@ -830,7 +826,8 @@ function ReceiveModal({
       <p className="text-xs text-gray-500 mb-3">
         Add what arrived and the purchase price per piece. The units go onto the shelf, and
         shipping and customs linked to this batch are spread across them automatically. New
-        designs need adding on the Inventory page first (with quantity 0).
+        designs need adding on the Inventory page first (hidden, quantity 0); receiving
+        them makes them live.
       </p>
       {!batch.receivedAt && (
         <div className="mb-3 max-w-[12rem]">
@@ -864,6 +861,7 @@ function ReceiveModal({
                   <option key={i.id} value={i.id}>
                     {i.name}
                     {i.size ? ` (${i.size})` : ""}
+                    {i.isActive ? "" : " · new, goes live on receipt"}
                   </option>
                 ))}
               </select>

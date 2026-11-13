@@ -5,7 +5,8 @@ import { recomputeLandedCosts } from "@/lib/inventory/lots";
 
 // POST /api/admin/finance/batches/[id]/receive
 // { receivedAt?, lines: [{ inventoryItemId, quantity, unitCost }] }
-// Adds the units to the shelf as lots of this batch and marks it RECEIVED.
+// Adds the units to the shelf as lots of this batch, makes the items live,
+// and marks the batch RECEIVED.
 // Can be called again for a part-delivery.
 export async function POST(
   request: NextRequest,
@@ -50,7 +51,8 @@ export async function POST(
         });
         await tx.inventoryItem.update({
           where: { id: l.inventoryItemId },
-          data: { quantity: { increment: l.quantity } },
+          // Items set up ahead of a delivery are hidden until stock lands.
+          data: { quantity: { increment: l.quantity }, isActive: true },
         });
       }
       await tx.stockBatch.update({
